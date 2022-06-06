@@ -9,14 +9,16 @@ tags:
 
 # Preface
 
-This article assumes a preliminary understanding of Abstract Syntex Tree structure and [BabelJS](https://babeljs.io/). [Click Here](http://localhost:4000/none) to read my introductory article on the usage of Babel.
+This article assumes a preliminary understanding of Abstract Syntex Tree structure and [BabelJS](https://babeljs.io/). [Click Here](http://SteakEnthusiast.github.io/none) to read my introductory article on the usage of Babel.
 
 # What is Constant Folding?
 
 **Constant Folding**: "An optimization technique that eliminates expressions that calculate a value that can already be determined before code execution." ([Source](https://cran.r-project.org/web/packages/rco/vignettes/opt-constant-folding.html))
 
 To better explain constant folding, it's perhaps more useful to first introduce the obfuscation technique that constant folding fights against. Take the following code for example:
+
 # Examples
+
 ## Example #1: The Basic Case
 
 ```javascript
@@ -178,7 +180,7 @@ And the original code is completely restored!
 
 ## Example #2: A Confident Complication
 
-If you've read my article on [_String Concealing_](http://localhost:4000/2022/05/22/Deobfuscating-Javascript-via-AST-Manipulation-Various-String-Concealing-Techniques/), specifically the section on [_String Concatenation_](http://localhost:4000/2022/05/22/Deobfuscating-Javascript-via-AST-Manipulation-Various-String-Concealing-Techniques/#Example-3-String-Concatenation), you may know that you can encounter a problem using the babel script above.
+If you've read my article on [_String Concealing_](http://SteakEnthusiast.github.io/2022/05/22/Deobfuscating-Javascript-via-AST-Manipulation-Various-String-Concealing-Techniques/), specifically the section on [_String Concatenation_](http://SteakEnthusiast.github.io/2022/05/22/Deobfuscating-Javascript-via-AST-Manipulation-Various-String-Concealing-Techniques/#Example-3-String-Concatenation), you may know that you can encounter a problem using the babel script above.
 
 Let's say you have a code snippet like this:
 
@@ -634,8 +636,10 @@ And all consecutive StringLiterals have been concatenated! Huzzah!
 
 # Conclusion
 
-Okay, I hope that second example wasn't too confusing. Usually, you'll be able to avoid the problem with unknown variable values by replacing references to a constant variable with their actual value. If you're interested in that, you can read my article about it [here](http://localhost:4000/none). In this case, however, it was unavoidable due to being within a class definition where variables have yet to be initialized.
+Okay, I hope that second example wasn't too confusing. Sometimes, you'll be able to avoid the problem with unknown variable values by replacing references to a constant variable with their actual value. If you're interested in that, you can read my article about it [here](http://SteakEnthusiast.github.io/2022/05/31/Deobfuscating-Javascript-via-AST-Replacing-References-to-Constant-Variables-with-Their-Actual-Value/). In this case, however, it was unavoidable due to being within a class definition where variables have yet to be initialized.
 
 Keep in mind that the second example will only work for _String Literals_ and _addition_. But, it can easily be adapted to other node types and operators. I'll leave that as a challenge for you, dear reader, if you wish to pursue it further 😉
+
+If you're interested, you can find the source code for all the examples in [this repository](https://github.com/SteakEnthusiast/Supplementary-AST-Based-Deobfuscation-Materials).
 
 Anyways, that's all I have for you today. I hope that this article helped you learn something new. Thanks for reading, and happy reversing!

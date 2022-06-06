@@ -11,7 +11,7 @@ tags:
 
 # Preface
 
-This article assumes a preliminary understanding of Abstract Syntex Tree structure and [BabelJS](https://babeljs.io/). [Click Here](http://localhost:4000/none) to read my introductory article on the usage of Babel.
+This article assumes a preliminary understanding of Abstract Syntex Tree structure and [BabelJS](https://babeljs.io/). [Click Here](http://SteakEnthusiast.github.io/none) to read my introductory article on the usage of Babel.
 
 # What is String Concealing?
 
@@ -748,7 +748,7 @@ let helloStatement =
   this.favAnimal;
 ```
 
-I'm sure some of you might be wondering why the algorithm doesn't work without manually adding the brackets. This is outside of the scope of this article. However, if you're interested in the reason for this intricacy and an algorithm that simplifies it _**without needing to manually add the brackets**_, check out my article about _[Constant Folding](http://localhost:4000/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/)_. But for now, I'll move on to another example.
+I'm sure some of you might be wondering why the algorithm doesn't work without manually adding the brackets. This is outside of the scope of this article. However, if you're interested in the reason for this intricacy and an algorithm that simplifies it _**without needing to manually add the brackets**_, check out my article about _[Constant Folding](http://SteakEnthusiast.github.io/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/)_. But for now, I'll move on to another example.
 
 ## Example #3: String Encryption
 
@@ -1043,8 +1043,8 @@ this.school = school;
 this.favAnimal = animal;
 ```
 
-The good news is, you can also use Babel to restore the traditional dot operator formatting in MemberExpressions. [Read my article about it here!](https://localhost:4000/none)
+The good news is, you can also use Babel to restore the traditional dot operator formatting in MemberExpressions. [Read my article about it here!](https://SteakEnthusiast.github.io/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Converting-Bracket-Notation-Dot-Notation-for-Property-Accessors/)
 
-If you're interested, you can find the source code for all the examples in [this repository](https://github.com/SteakEnthusiast).
+If you're interested, you can find the source code for all the examples in [this repository](https://github.com/SteakEnthusiast/Supplementary-AST-Based-Deobfuscation-Materials).
 
 I hope that this article helped you learn something new. Thanks for reading, and happy reversing!

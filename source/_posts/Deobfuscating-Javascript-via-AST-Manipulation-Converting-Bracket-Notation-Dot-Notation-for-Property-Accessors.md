@@ -11,7 +11,7 @@ tags:
 
 # Preface
 
-This article assumes a preliminary understanding of Abstract Syntex Tree structure and [BabelJS](https://babeljs.io/). [Click Here](http://localhost:4000/none) to read my introductory article on the usage of Babel.
+This article assumes a preliminary understanding of Abstract Syntex Tree structure and [BabelJS](https://babeljs.io/). [Click Here](http://SteakEnthusiast.github.io/none) to read my introductory article on the usage of Babel.
 
 I'll be honest, this transformation is less "deobfuscation" than it is "making our script look slightly prettier". Even so, I think that it's worth mentioning since it's still an interesting example of how to manipulate an abstract syntax tree with babel. So, without further ado, let's get into it!
 
@@ -183,7 +183,7 @@ let bar = window[foo]
 
 Which is the exact same thing. To restore it to `let bar = window.navigator`, we first must replace all references to the constant variable `foo` with it's actual value, `"navigator"`. If you want to learn how to do that, you can read [my article on replacing constant variables with their actual value](https://localhost:400/none).
 
-As always, you can find the source code for this plugin in this [git repository](https://github.com).
+If you're interested, you can find the source code for all the examples in [this repository](https://github.com/SteakEnthusiast/Supplementary-AST-Based-Deobfuscation-Materials).
 
 I hope this article helped you learn something new. Thanks for reading, and happy reversing!
 
