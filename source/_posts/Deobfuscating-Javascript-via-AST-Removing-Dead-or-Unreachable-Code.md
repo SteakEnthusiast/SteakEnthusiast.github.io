@@ -94,7 +94,7 @@ We can observe from the AST structure that each new variable creations results i
 
 Based on this, we can deem our target node types of interest to be _VariableDeclarator_ and _FunctionDeclaration_.
 
-Recall that we want to identify all **_constant_** variables and **non-referenced** variables, then remove them. It's important to note that variables in different scopes (ex. local vs. global), may share the same name but have different values. So, we cannot simply base our solution off of how many times a variable name occurs in a program.
+Recall that we want to identify all **_constant_** variables and **non-referenced** variables, then remove them. It's important to note that variables in different scopes (e.g. local vs. global), may share the same name but have different values. So, we cannot simply base our solution off of how many times a variable name occurs in a program.
 
 This would be a convoluted process if not for Babel's 'Scope' API. I won't dive too deep into the available scope API's, but you can refer to the [Babel Plugin Handbook](https://github.com/jamiebuilds/babel-handbook/blob/master/translations/en/plugin-handbook.md#toc-scopes) to learn more about them. In our case, the `scope.getBinding(${identifierName})` method will be incredibly useful for us, as it directly returns information regarding if a variable is constant and all of its references (or lack thereof).
 

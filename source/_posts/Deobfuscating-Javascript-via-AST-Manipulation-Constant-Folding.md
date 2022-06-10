@@ -85,7 +85,7 @@ If we click on one of the expression chunks on the right hand side of the assign
 
 We can see that in this case, the small chunk of the string is of type _StringLiteral_, and it's contained inside a bunch of nested _BinaryExpression_ nodes. If we look at any other fraction of the other expressions, we can observe two important commonalities
 
-1. A constant value, or _Literal_ (ex. _StringLiteral_,_NumericLiteral_, or _BooleanLiteral_)
+1. A constant value, or _Literal_ (e.g. _StringLiteral_,_NumericLiteral_, or _BooleanLiteral_)
 
 2. The _Literal_ is contained inside a single or nested BinaryExpression(s).
 
@@ -96,7 +96,7 @@ Our final goal is to evaluate all the binary expressions to reduce each right-ha
 3. Check if it returns `confident:true`. If `confident` is `false`, skip the node by returning.
 4. Create a node from the value using `t.valueToNode(value)` to infer the type, and assign it to a new variable, `valueNode`
 5. Check that the resulting `valueNode` is a _Literal_ type. If the check returns `false` skip the node by returning.
-   - This will cover _StringLiteral_, _NumericLiteral_, _BooleanLiteral_ etc. types and skip over others that would result from invalid operations (ex. `t.valueToNode(Infinity)` is of type _BinaryExpression_, `t.valueToNode(undefined)` is of type identifier)
+   - This will cover _StringLiteral_, _NumericLiteral_, _BooleanLiteral_ etc. types and skip over others that would result from invalid operations (e.g. `t.valueToNode(Infinity)` is of type _BinaryExpression_, `t.valueToNode(undefined)` is of type identifier)
 6. Replace the BinaryExpression node with our newly created `valueNode'.
    The babel implementation is shown below:
 
@@ -131,7 +131,7 @@ function deobfuscate(source) {
       let { confident, value } = path.evaluate(); // Evaluate the binary expression
       if (!confident) return; // Skip if not confident
       let actualVal = t.valueToNode(value); // Create a new node, infer the type
-      if (!t.isLiteral(actualVal)) return; // Skip if not a Literal type (ex. StringLiteral, NumericLiteral, Boolean Literal etc.)
+      if (!t.isLiteral(actualVal)) return; // Skip if not a Literal type (e.g. StringLiteral, NumericLiteral, Boolean Literal etc.)
       path.replaceWith(actualVal); // Replace the BinaryExpression with the simplified value
     },
   };
@@ -551,7 +551,7 @@ function deobfuscate(source) {
         if (!confident) return;
         // Create a new node, infer the type
         let actualVal = t.valueToNode(value);
-        // Skip if not a Literal type (ex. StringLiteral, NumericLiteral, Boolean Literal etc.)
+        // Skip if not a Literal type (e.g. StringLiteral, NumericLiteral, Boolean Literal etc.)
         if (!t.isStringLiteral(actualVal)) return;
         // Replace the BinaryExpression with the simplified value
         path.replaceWith(actualVal);

@@ -309,7 +309,7 @@ Lets now expand the _VariableDeclaration_ node that holds the string array.
 
 We can observe that the name of the string array,`_0xcd45` is held in `path.node.declarations[0].id.name`. We can also see that `path.node.declarations[0].init.elements` is an array of nodes, which holds each node of the string literals declared in the string array. Finally, the string array is the first _VariableDeclaration_ with an init value of type _ArrayExpression_ encountered at the top of the file.
 
-[_Note: Traditionally, javascript obfuscators put the string arrays at the top of the file/code block. However, sometimes this may not always be the case (ex. other string-containing arrays are declared first or reassignment of the string array). You may need to make a slight modification to this step in that case._]
+[_Note: Traditionally, javascript obfuscators put the string arrays at the top of the file/code block. However, sometimes this may not always be the case (e.g. other string-containing arrays are declared first or reassignment of the string array). You may need to make a slight modification to this step in that case._]
 
 Using those observations, we can come up with the following logic to restore the code:
 
@@ -870,7 +870,7 @@ The first method involves the following steps:
 2. Paste the decryption function, `_0x2720d7`, in our deobfuscator
 3. Traverse the ast in search for the FunctionDeclaration of the decryption function (in this case, `_0x2720d7`). Once found, remove the path as it is no longer necessary
 4. Traverse the ast in search of CallExpressions where the callee is the decryption function (in this case, `_0x2720d7`). Once found:
-   1. Assign each arugument of `path.node.arguments` to a variable, ex. `stringToDecrypt` and `decryptionKey` respectively.
+   1. Assign each arugument of `path.node.arguments` to a variable, e.g. `stringToDecrypt` and `decryptionKey` respectively.
    2. Create a variable, `result`
    3. Evaluate `_0x2720d7(stringToDecrypt,decryptionKey)` and assign the resulting value to `result`
    4. Replace the CallExpression path with the actual value: `path.replaceWith(t.valueToNode(result))`

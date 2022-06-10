@@ -15,7 +15,7 @@ This article assumes a preliminary understanding of Abstract Syntex Tree structu
 For our purposes, a constant variable is any variable that meets _**all three**_ of the following conditions:
 
 - The variable is declared **AND** initialized at the same time.
-- The variable is initialized to a _literal value_, ex. _StringLiteral_, _NumericLiteral_, _BooleanLiteral_ etc.
+- The variable is initialized to a _literal value_, e.g. _StringLiteral_, _NumericLiteral_, _BooleanLiteral_ etc.
 - The variable is never reassigned another value in the script
 
 Therefore, a variable's declaration keyword (`let`,`var`,`const`) has no bearing on whether or not it is a constant.
@@ -222,7 +222,7 @@ Our target of interest are the extra variable declarations. Let's take a closer 
 
 So, the target node type appears to be of type _VariableDeclaration_. However, each of these _VariableDeclarations_ contain an array of _VariableDeclarators_. It is the _VariableDeclarator_ that actually contains the information of the variables, including its `id` and `init` value. So, the actual node type we should focus on are _VariableDeclarators_.
 
-Recall that we want to identify all **_constant_** variables, then replace all their **_references_** with their actual value. It's important to note that variables in different scopes (ex. local vs. global), may share the same name but have different values. So, the solution isn't as simple as blindly replacing all matching identifiers with their initial value.
+Recall that we want to identify all **_constant_** variables, then replace all their **_references_** with their actual value. It's important to note that variables in different scopes (e.g. local vs. global), may share the same name but have different values. So, the solution isn't as simple as blindly replacing all matching identifiers with their initial value.
 
 This would be a convoluted process if not for Babel's 'Scope' API. I won't dive too deep into the available scope API's, but you can refer to the [Babel Plugin Handbook](https://github.com/jamiebuilds/babel-handbook/blob/master/translations/en/plugin-handbook.md#toc-scopes) to learn more about them. In our case, the `scope.getBinding(${identifierName})` method will be incredibly useful for us, as it directly returns information regarding if a variable is constant and all of its references.
 
