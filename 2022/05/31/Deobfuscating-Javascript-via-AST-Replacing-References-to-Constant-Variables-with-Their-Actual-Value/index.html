@@ -16,17 +16,17 @@
   <meta name="author" content="William Khem Marquez">
   <meta name="keywords" content="">
   
-    <meta name="description" content="PrefaceThis article assumes a preliminary understanding of Abstract Syntex Tree structure and BabelJS. Click Here to read my introductory article on the usage of Babel. Definition of a Constant Variab">
+    <meta name="description" content="PrefaceThis article assumes a preliminary understanding of Abstract Syntax Tree structure and BabelJS. Click Here to read my introductory article on the usage of Babel. Definition of a Constant Variab">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Deobfuscating Javascript via AST: Replacing References to Constant Variables with Their Actual Value">
 <meta property="og:url" content="http://steakenthusiast.github.io/2022/05/31/Deobfuscating-Javascript-via-AST-Replacing-References-to-Constant-Variables-with-Their-Actual-Value/index.html">
 <meta property="og:site_name" content="ReverseJS">
-<meta property="og:description" content="PrefaceThis article assumes a preliminary understanding of Abstract Syntex Tree structure and BabelJS. Click Here to read my introductory article on the usage of Babel. Definition of a Constant Variab">
+<meta property="og:description" content="PrefaceThis article assumes a preliminary understanding of Abstract Syntax Tree structure and BabelJS. Click Here to read my introductory article on the usage of Babel. Definition of a Constant Variab">
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="http://steakenthusiast.github.io/2022/05/31/Deobfuscating-Javascript-via-AST-Replacing-References-to-Constant-Variables-with-Their-Actual-Value/replacing1.PNG">
 <meta property="og:image" content="http://steakenthusiast.github.io/2022/05/31/Deobfuscating-Javascript-via-AST-Replacing-References-to-Constant-Variables-with-Their-Actual-Value/replacing2.PNG">
 <meta property="article:published_time" content="2022-05-31T15:10:37.000Z">
-<meta property="article:modified_time" content="2022-06-10T05:00:40.329Z">
+<meta property="article:modified_time" content="2022-06-14T16:48:37.567Z">
 <meta property="article:author" content="William Khem Marquez">
 <meta property="article:tag" content="Javascript">
 <meta property="article:tag" content="Deobfuscation">
@@ -284,7 +284,7 @@
             
             <div class="markdown-body">
               
-              <h1 id="Preface"><a href="#Preface" class="headerlink" title="Preface"></a>Preface</h1><p>This article assumes a preliminary understanding of Abstract Syntex Tree structure and <a target="_blank" rel="noopener" href="https://babeljs.io/">BabelJS</a>. <a href="http://steakenthusiast.github.io/2022/05/21/Deobfuscating-Javascript-via-AST-An-Introduction-to-Babel/">Click Here</a> to read my introductory article on the usage of Babel.</p>
+              <h1 id="Preface"><a href="#Preface" class="headerlink" title="Preface"></a>Preface</h1><p>This article assumes a preliminary understanding of Abstract Syntax Tree structure and <a target="_blank" rel="noopener" href="https://babeljs.io/">BabelJS</a>. <a href="http://steakenthusiast.github.io/2022/05/21/Deobfuscating-Javascript-via-AST-An-Introduction-to-Babel/">Click Here</a> to read my introductory article on the usage of Babel.</p>
 <h1 id="Definition-of-a-Constant-Variable"><a href="#Definition-of-a-Constant-Variable" class="headerlink" title="Definition of a Constant Variable"></a>Definition of a Constant Variable</h1><p>For our purposes, a constant variable is any variable that meets <em><strong>all three</strong></em> of the following conditions:</p>
 <ul>
 <li>The variable is declared <strong>AND</strong> initialized at the same time.</li>
