@@ -18,7 +18,7 @@
 
 # Icons for browser tabs
 # Icon for browser tab
-favicon: /img/fluid.png
+favicon: ../images/ico.jpg
 
 # Icons for Apple devices
 # Icon for Apple touch
@@ -872,7 +872,7 @@ cusdis:
 # Archive Page
 #----------------------------
 archive:
-  banner_img: /img/default.png
+  banner_img: ../images/background.png
   banner_img_height: 60
   banner_mask_alpha: 0.3
 
@@ -883,7 +883,7 @@ archive:
 #----------------------------
 category:
   enable: true
-  banner_img: /img/default.png
+  banner_img: ../images/background.png
   banner_img_height: 60
   banner_mask_alpha: 0.3
 
@@ -912,7 +912,7 @@ category:
 #----------------------------
 tag:
   enable: true
-  banner_img: /img/default.png
+  banner_img: ../images/background.png
   banner_img_height: 80
   banner_mask_alpha: 0.3
   tagcloud:
@@ -929,7 +929,7 @@ tag:
 #----------------------------
 about:
   enable: true
-  banner_img: /img/default.png
+  banner_img: ../images/background.png
   banner_img_height: 60
   banner_mask_alpha: 0.3
   avatar: /img/avatar.png
@@ -951,7 +951,7 @@ about:
 # Custom Page through `hexo new page`
 #----------------------------
 page:
-  banner_img: /img/default.png
+  banner_img: ../images/background.png
   banner_img_height: 60
   banner_mask_alpha: 0.3
 
@@ -962,7 +962,7 @@ page:
 #----------------------------
 page404:
   enable: true
-  banner_img: /img/default.png
+  banner_img: ../images/background.png
   banner_img_height: 85
   banner_mask_alpha: 0.3
   # Delay to redirect to home page (ms)
@@ -976,7 +976,7 @@ page404:
 #----------------------------
 links:
   enable: true
-  banner_img: /img/default.png
+  banner_img: ../images/background.png
   banner_img_height: 60
   banner_mask_alpha: 0.3
   # Member item of Friendship Chain

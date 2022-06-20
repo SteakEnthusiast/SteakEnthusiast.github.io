@@ -5,7 +5,7 @@
 # Site
 title: ReverseJS
 subtitle: ''
-description: ''
+description: 'A Javascript-Focused Reverse Engineering Blog'
 keywords:
 author: William Khem Marquez
 language: en
@@ -110,4 +110,6 @@ image_caption:
 # Deployment
 ## Docs: https://hexo.io/docs/one-command-deployment
 deploy:
-  type: ''
+  type: git
+  repo: git@github.com:SteakEnthusiast/SteakEnthusiast.github.io.git 
+  branch: main

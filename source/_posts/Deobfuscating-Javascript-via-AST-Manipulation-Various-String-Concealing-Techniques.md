@@ -7,17 +7,20 @@ tags:
   - Javascript
   - Deobfuscation
   - Babel
+  - Reverse Engineering
+categories:
+  - Deobfuscation
 ---
 
 # Preface
 
-This article assumes a preliminary understanding of Abstract Syntex Tree structure and [BabelJS](https://babeljs.io/). [Click Here](http://SteakEnthusiast.github.io/none) to read my introductory article on the usage of Babel.
+This article assumes a preliminary understanding of Abstract Syntax Tree structure and [BabelJS](https://babeljs.io/). [Click Here](http://SteakEnthusiast.github.io/2022/05/21/Deobfuscating-Javascript-via-AST-An-Introduction-to-Babel/) to read my introductory article on the usage of Babel.
 
 # What is String Concealing?
 
 In JavaScript, string concealing is an obfuscation technique that transforms code in a way that disguises references to string literals. After doing so, the code becomes much less readable to a human at first glance. This can be done in multiple different ways, including but not limited to:
 
-- Encoding the string as a hexidecimal/unicode representation,
+- Encoding the string as a hexadecimal/Unicode representation,
 - Splitting a single string into multiple substrings, then concatenating them,
 - Storing all string literals in a single array and referencing an element in the array when a string value is required
 - Using an algorithm to encrypt strings, then calling a corresponding decryption algorithm on the encrypted value whenever its value needs to be read
@@ -26,9 +29,9 @@ In the following sections, I will provide some examples of these techniques in a
 
 # Examples
 
-## Example #1: Hexadecimnal/Unicode Escape Sequence Representations
+## Example #1: Hexadecimal/Unicode Escape Sequence Representations
 
-Rather than storing a string as a literal, an author may choose to store it as an _[escape sequence](https://riptutorial.com/javascript/example/19374/escape-sequence-types)_. The javascript engine will parse the actual string literal value of an escaped string before it is used or printed to the console. However, its virtually unreadable to an ordinary human. Below is an example of a sample obfuscated using this technique.
+Rather than storing a string as a literal, an author may choose to store it as an _[escape sequence](https://riptutorial.com/javascript/example/19374/escape-sequence-types)_. The javascript engine will parse the actual string literal value of an escaped string before it is used or printed to the console. However, it's virtually unreadable to an ordinary human. Below is an example of a sample obfuscated using this technique.
 
 ### Original Source Code
 
@@ -103,11 +106,11 @@ examplePerson.sayHello();
 
 ### Analysis Methodology
 
-Despite appearing daunting at first glance, this obfuscation technique is relatively trivial to reverse. To begin, lets copy and paste the obfuscated sample into [AST Explorer](https://astexplorer.net/)
+Despite appearing daunting at first glance, this obfuscation technique is relatively trivial to reverse. To begin, let's copy and paste the obfuscated sample into [AST Explorer](https://astexplorer.net/)
 
 ![View of the obfuscated code in AST Explorer](../images/stringencode.PNG)
 
-Our targets of interest here are the obfuscated strings, which are of type _StringLiteral_. Lets take a closer look at one of these nodes:
+Our targets of interest here are the obfuscated strings, which are of type _StringLiteral_. Let's take a closer look at one of these nodes:
 
 ![A closer look at one of the obfuscated StringLiteral nodes](../images/extra.png)
 
@@ -293,7 +296,7 @@ examplePerson[_0xcd45[10]](); // Member expression property obfuscated using thi
 
 ### Analysis Methodology
 
-Similar to the first example, this obfuscation technique is mostly for show and very trivial to undo. To begin, lets copy and paste the obfuscated sample into [AST Explorer](https://astexplorer.net/)
+Similar to the first example, this obfuscation technique is mostly for show and very trivial to undo. To begin, let's copy and paste the obfuscated sample into [AST Explorer](https://astexplorer.net/)
 
 ![View of the obfuscated code in AST Explorer](../images/stringArray1.PNG)
 
@@ -301,11 +304,11 @@ Our targets of interest here are the master array, `_0xcd45` and its references.
 
 ![A closer look at one of the obfuscated MemberExpression nodes](../images/stringArray2.PNG)
 
-We can notice that unlike the first example, babel does not compute the actual value of these member expressions for us. However, it does store the name of the array they are referencing and the position of the array to be accessed.
+We can notice that, unlike the first example, babel does not compute the actual value of these member expressions for us. However, it does store the name of the array they are referencing and the position of the array to be accessed.
 
-Lets now expand the _VariableDeclaration_ node that holds the string array.
+Let's now expand the _VariableDeclaration_ node that holds the string array.
 
-![A closer look at one of the Variable Declaration node that holds the _0xcd45 array](../images/stringArray3.PNG)
+![A closer look at the Variable Declaration node for the _0xcd45 array](../images/stringArray3.PNG)
 
 We can observe that the name of the string array,`_0xcd45` is held in `path.node.declarations[0].id.name`. We can also see that `path.node.declarations[0].init.elements` is an array of nodes, which holds each node of the string literals declared in the string array. Finally, the string array is the first _VariableDeclaration_ with an init value of type _ArrayExpression_ encountered at the top of the file.
 
@@ -315,7 +318,7 @@ Using those observations, we can come up with the following logic to restore the
 
 1. Traverse the ast to search for the variable declaration of the string array. To check if it is the string array's declaration, it must meet the following criteria:
    1. The _VariableDeclaration_ node must declare only **ONE** variable.
-   2. It's corresponding _VariableDeclarator_ node must have an init property of type _ArrayExpression_
+   2. Its corresponding _VariableDeclarator_ node must have an init property of type _ArrayExpression_
    3. **ALL** of the elements of the _ArrayExpression_ must be of type _StringLiteral_
 2. After finding the declaration, we can:
    1. Store the string array's name in a variable, `stringArrayName`
@@ -461,7 +464,7 @@ The strings are now deobfuscated, and the code becomes much easier to read.
 
 ## Example #3: String Concatenation
 
-This type of obfuscation, in it's most basic form, takes a string such as the following:
+This type of obfuscation, in its most basic form, takes a string such as the following:
 
 ```javascript
 let myString = "Hello World";
@@ -473,7 +476,7 @@ And splits it into multiple parts:
 let myString = "He" + "l" + "l" + "o W" + "o" + "rl" + "d"; // => Hello World
 ```
 
-You might be thinking, "hey, the obfuscated version doesn't look that bad", and you'd be right. However, keep in mind that a file will typically have a lot more obfuscation layered on top. An example using the techniques already covered above could look something like this (or likely more advanced):
+You might be thinking, "Hey, the obfuscated version doesn't look that bad", and you'd be right. However, keep in mind that a file will typically have a lot more obfuscation layered on top. An example using the techniques already covered above could look something like this (or likely more advanced):
 
 ```javascript
 var _0xba8a = ["\x48\x65", "\x6C", "\x6F\x20\x57", "\x6F", "\x72\x6C", "\x64"]; //Encoded string array
@@ -562,7 +565,7 @@ Let's paste our obfuscated code into [AST Explorer](https://astexplorer.net/).
 
 ![View of the obfuscated code in AST Explorer](../images/stringconcat1.PNG)
 
-Our targets of interest here are all of the strings being concatenated. Let's click on one of the parters closer look at one of the nodes of interest.
+Our targets of interest here are all of the strings being concatenated. Let's click on one of them to take a closer look at one of the nodes of interest.
 
 ![A closer look at one of the nodes of interest](../images/stringconcat2.PNG)
 
@@ -686,7 +689,7 @@ const examplePerson = new Person(
 );
 ```
 
-And slightly more advanced case, where string literals are mixed with non string literals (in this case, variables):
+And the bit more advanced case, where string literals are mixed with non-string literals (in this case, variables):
 
 ```javascript
 let helloStatement =
@@ -752,7 +755,7 @@ I'm sure some of you might be wondering why the algorithm doesn't work without m
 
 ## Example #3: String Encryption
 
-First and foremost, string encryption **_IS NOT_** the same as encoding strings as hexadecimal or unicode. Where as the javascript interpretator will be automatically interpret `"\x48\x65\x6c\x6c\x6f"` as `"Hello"`, encrypted strings must be passed through to a decryption function and evaluated _before_ they become useful to the javascript engine (or representable as a StringLiteral by Babel).
+First and foremost, string encryption **_IS NOT_** the same as encoding strings as hexadecimal or unicode. Whereas the javascript interpreter will automatically interpret`"\x48\x65\x6c\x6c\x6f"` as `"Hello"`, encrypted strings must be passed through to a decryption function and evaluated _before_ they become useful to the javascript engine (or representable as a StringLiteral by Babel).
 
 For example, even though Base64 is a type of encoding, in the context of string concealing it falls under string encryption since `console.log("SGVsbG8=")` prints `SGVsbG8=`, but `console.log(atob{SGVsbG8=})` prints `Hello`. In this example, atob() is the decoding function.
 
@@ -886,10 +889,10 @@ A cleaner approach in my opinion is the next method, which evaluates the decrypt
 
 Whenever possible, I prefer to use this method because of its cleanliness. Why? Well,
 
-- It doesn't require me to copy paste the entire encryption function into my deobfuscator
+- It doesn't require me to copy-paste the entire encryption function into my deobfuscator
 - I don't need to manually parse any of the arguments of CallExpressions before execution.
 
-The only downside is that it requires two seperate visitors and therefore two traversals, where as you can probably implement the first method in a single traversal.
+The only downside is that it requires two separate visitors and therefore two traversals, whereas you can probably implement the first method in a single traversal.
 
 Here are the steps to implement it:
 

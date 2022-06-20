@@ -2,11 +2,17 @@
 title: "An Introduction to Javascript Obfuscation & Babel"
 date: 2022-05-21 23:44:58
 tags:
+  - Javascript
+  - Deobfuscation
+  - Babel
+  - Reverse Engineering
+categories:
+  - Deobfuscation
 ---
 
 # Introduction
 
-Welcome to the first article in my series about Javascript deobfuscation. I won't be going indepth regarding practical deobfuscation techniques; that'll be reserved for later articles. Rather, this post serve as a brief overview of the state of Javascript obfuscation, different methods of analysis, and provide resources to learn more about reverse engineering Javascript.
+Welcome to the first article in my series about Javascript deobfuscation. I won't be going in-depth regarding practical deobfuscation techniques; that'll be reserved for later articles. Rather, this post serves as a brief overview of the state of Javascript obfuscation, different methods of analysis, and provides resources to learn more about reverse engineering Javascript.
 
 # What is Obfuscation?
 
@@ -15,12 +21,12 @@ Welcome to the first article in my series about Javascript deobfuscation. I won'
 Obfuscation is a series of code transformations that turn human-readable code into something that is deliberately difficult for a human to understand, while (for the most part) still maintaining its original functionality. Code authors may choose to obfuscate their code for many reasons, including but not limited to:
 
 - To make it harder to modify, debug, or reproduce (e.g. some javascript-based games or programs)
-- To hide it a malicious intent intent (e.g. malware)
-- To enchance security, i.e obscuring the logic behind javascript-based challenges or fingerprinting (e.g. ReCAPTCHA, Shape Security, PerimeterX, Akamai, DataDome)
+- To hide malicious intent (e.g. malware)
+- To enhance security, i.e obscuring the logic behind javascript-based challenges or fingerprinting (e.g. ReCAPTCHA, Shape Security, PerimeterX, Akamai, DataDome)
 
 ## Example
 
-For example, the obfuscation process can convert this human readable script:
+For example, the obfuscation process can convert this human-readable script:
 
 ```js
 console.log("Hello");
@@ -202,7 +208,7 @@ There are many available javascript obfuscators, both closed and open-source. He
 - [Javascript Obfuscator](https://javascriptobfuscator.com)
 - [JSDefender](https://www.preemptive.com/products/jsdefender/)
 
-For further reading on on the why and how's of Javascript Obfuscation, I recommend checking out the [Jscrambler blog posts](https://blog.jscrambler.com/javascript-obfuscation-the-definitive-guide/). For now though, I'll shift the topic towards reverse engineering.
+For further reading on the why and how's of Javascript Obfuscation, I recommend checking out the [Jscrambler blog posts](https://blog.jscrambler.com/javascript-obfuscation-the-definitive-guide/). For now, though, I'll shift the topic towards reverse engineering.
 
 # How is Obfuscated Code Analyzed?
 
@@ -220,7 +226,7 @@ Dynamic analysis refers to the testing and analysis of an application **during r
 
 Since static analysis does not execute code, it makes it ideal for analyzing untrusted scripts. For example, when analyzing malware, you may want to use static analysis to avoid infection of your computer.
 
-Dynamic analysis is used when a script is known to be safe to run. Debuggers can be powerful tools for reverse engineering, as they allow you to view the state of the program at different points in the runtime. Additionally, dyanmic analysis can be (and often is) used for malware analysis too, but only after taking proper security precautions (i.e sandboxing).
+Dynamic analysis is used when a script is known to be safe to run. Debuggers can be powerful tools for reverse engineering, as they allow you to view the state of the program at different points in the runtime. Additionally, dynamic analysis can be (and often is) used for malware analysis too, but only after taking proper security precautions (i.e sandboxing).
 
 Static and dynamic analysis are powerful when used together. For example, debugging a script containing a lot of junk code can be difficult. Or, the code may contain anti-debugging protection (e.g. [infinite debugger loops](https://x-c3ll.github.io/posts/javascript-antidebugging/)). In this case, someone may first use static inspection of source code to simplify the source code, then proceed with dynamic analysis using the modified source.
 
@@ -230,7 +236,7 @@ Static and dynamic analysis are powerful when used together. For example, debugg
 
 Let me give a short explanation of how it works:
 
-Javascript is an intepreted programming language. For Javascript to be interpreted by an engine (e.g. Chrome's V8 engine or Firefox's Spidermonkey) into machine code, it is first parsed into an **_Abstract Syntax Tree_** (AST). After that, the AST is used to generate machine-readable byte-code, which is then executed.
+Javascript is an interpreted programming language. For Javascript to be interpreted by an engine (e.g. Chrome's V8 engine or Firefox's Spidermonkey) into machine code, it is first parsed into an **_Abstract Syntax Tree_** (AST). After that, the AST is used to generate machine-readable byte-code, which is then executed.
 
 Babel works in a similar fashion. It takes in Javascript code, parses it into an AST, then outputs javascript based on that AST.
 
@@ -238,9 +244,9 @@ Okay, sounds interesting. But what even is an AST?
 
 ## Definition: Abstract Syntax Tree
 
-An **_Abstract Syntax Tree_** (AST) is a tree-like structure that hierarchaly represents the syntax of a piece of source code. Each node of the tree represents the occurence of a predefined structure in the source code. Any piece of source code, from any programming language, can be represented as an AST.
+An **_Abstract Syntax Tree_** (AST) is a tree-like structure that hierarchically represents the syntax of a piece of source code. Each node of the tree represents the occurrence of a predefined structure in the source code. Any piece of source code, from any programming language, can be represented as an AST.
 
-Note: _Even though the concepts behind an AST are universal, different programming languages may have a different AST specification based on their capabilities._
+Note: _Even though the concepts behind an AST are universal, different programming languages may have a different AST specifications based on their capabilities._
 
 Some practical uses of ASTs include:
 
@@ -248,9 +254,9 @@ Some practical uses of ASTs include:
 - Formatting Code
 - Syntax Highlighting
 
-And, of course, due to more verbose nature of ASTs relative to plaintext source code, it makes them a great tool for reverse engineering 😁
+And, of course, due to the more verbose nature of ASTs relative to plaintext source code, it makes them a great tool for reverse engineering 😁
 
-Unfortunately, I won't be giving a more indepth definition of ASTs. This is for the sake of time, and since that'd be more akin to the subject of compiler theory than deobfuscation. I'd prefer to get right into explaining the usage of Babel as quickly as possible. However, I'll leave you with some resources to read up more about ASTs (which probably offer a better explanation than I could muster anyways):
+Unfortunately, I won't be giving a more in-depth definition of ASTs. This is for the sake of time, and since that'd be more akin to the subject of compiler theory than deobfuscation. I'd prefer to get right into explaining the usage of Babel as quickly as possible. However, I'll leave you with some resources to read up more about ASTs (which probably offer a better explanation than I could muster anyway):
 
 [Wikipedia - Abstract Syntax Trees](https://en.wikipedia.org/wiki/Abstract_syntax_tree)
 [How JavaScript works: Parsing, Abstract Syntax Trees (ASTs) + 5 tips on how to minimize parse time](https://blog.sessionstack.com/how-javascript-works-parsing-abstract-syntax-trees-asts-5-tips-on-how-to-minimize-parse-time-abfcf7e8a0c8)
@@ -651,13 +657,13 @@ The generated AST looks like this:
 
 </details>
 
-We can observe that even for this small little program, the AST representation is incredibly verbose. It's composed of different types of nodes (`FunctionDeclaration`s, `ExpressionStatement`s, `Identifier`s, `CallExpression`s etc.), and many nodes also have a sub node. To transform the AST, we'll be making use of the Babel traverse package to recursively traverse the tree and modify nodes.
+We can observe that even for this small little program, the AST representation is incredibly verbose. It's composed of different types of nodes (`FunctionDeclaration`s, `ExpressionStatement`s, `Identifier`s, `CallExpression`s, etc.), and many nodes also have a sub node. To transform the AST, we'll be making use of the Babel traverse package to recursively traverse the tree and modify nodes.
 
 ## Phase 2: Coming Up With The Transformation Logic/Pseudo-code
 
 This isn't an obfuscated file, but we'll still write a plugin to demonstrate the traverse package's functionality.
 
-Let's assign ourselves an arbitrary goal of transforming the script to replace all occurences of arithmetic addition operators (`+`) with arithmetic multiplication operators (`*`). That is, the final script should look like this:
+Let's assign ourselves an arbitrary goal of transforming the script to replace all occurrences of arithmetic addition operators (`+`) with arithmetic multiplication operators (`*`). That is, the final script should look like this:
 
 ```javascript
 function operation(arg1, arg2) {
@@ -669,7 +675,7 @@ let foo = operation(6, 8);
 
 ### Determining the Target Node Type(s)
 
-First, we need to determine what our node type(s) of interest are. If we highlight a section of the code, AST explorer will automatically expand that node on the right-hand side. In our case, we want to focus on the `arg1 + arg2` operation. After highlughting that piece of code, we'll see this:
+First, we need to determine what our node type(s) of interest are. If we highlight a section of the code, AST explorer will automatically expand that node on the right-hand side. In our case, we want to focus on the `arg1 + arg2` operation. After highlighting that piece of code, we'll see this:
 
 ![A closer look at the nodes of interest](intro2.png)
 
@@ -688,11 +694,11 @@ Now that we have our target node type, we need to figure out how we'll transform
 
 To reiterate: we know that we're looking for `BinaryExpression`s. Each `BinaryExpression` has a property, `operator`. We want to edit this property to `*` if it is a `+`.
 
-The logical proccess would therefore look like this:
+The logical process would therefore look like this:
 
 1. Parse the code to generate an AST.
 1. Traverse the AST in search of `BinaryExpression`s.
-1. If one is encountered, check that it's operator is currently equal to `+`. If it isn't, skip that node.
+1. If one is encountered, check that its operator is currently equal to `+`. If it isn't, skip that node.
 1. If the operator is equal to `+`, set the operator to `*`.
 
 Now that we understand the logic, we can write it as code
@@ -719,7 +725,7 @@ const changeOperatorVisitor = {
 
 Now, every time a `BinaryExpression` is encountered, the `BinaryExpression(path)` method will be called.
 
-Inside of the `BinaryExpression(path)` method of our visitor, we can add code for any checks and transformations.
+Inside the `BinaryExpression(path)` method of our visitor, we can add code for any checks and transformations.
 
 Each visitor method takes in a parameter, `path`, which holds the path to the node being visited. To access the actual properties of the node, we must use `path.node`.
 
@@ -771,7 +777,7 @@ let foo = operation(6, 8);
 let ast = parser.parse(code);
 ```
 
-After that, we can paste our visitor into the source code. To taverse the AST using the visitor, we'll use the `traverse` method from the `@babel/traverse` package. That would look like this:
+After that, we can paste our visitor into the source code. To traverse the AST using the visitor, we'll use the `traverse` method from the `@babel/traverse` package. That would look like this:
 
 ```javascript
 const parser = require("@babel/parser");
@@ -804,9 +810,11 @@ const changeOperatorVisitor = {
 traverse(ast, changeOperatorVisitor);
 ```
 
-Finally, we'll use the `generate` method from the `@babel/generator` package to generate the final code from the modified AST. We can also output the reuslting code to a file, but I'll just log it to the console for simplicity.
+Finally, we'll use the `generate` method from the `@babel/generator` package to generate the final code from the modified AST. We can also output the resulting code to a file, but I'll just log it to the console for simplicity.
 
-So, our final deobfuscation script looks like this:
+So, our final transformation script looks like this:
+
+## Babel Transformation Script
 
 ```javascript
 const parser = require("@babel/parser");
@@ -857,13 +865,13 @@ And we can see that the code has been successfully transformed to replace `+` op
 
 # Why use Babel for Deobfuscation?
 
-So, why should we use use Babel as a deobfuscation tool as opposed to other static analysis tools like Regex?
+So, why should we use Babel as a deobfuscation tool as opposed to other static analysis tools like Regex?
 
-Here's a few reasons:
+Here are a few reasons:
 
 1. **Ast is less error-prone.**
 
-   - For large chunks of code, writing transfomrations can become incredibly tedious due to the edge cases. For example, a it's difficult to account for scope and state of variables when using regex. For example, two different variables can share the same name if they're in different scopes:
+   - For large chunks of code, writing transformations can become incredibly tedious due to the edge cases. For example, it's difficult to account for the scope and state of variables when using regex. For example, two different variables can share the same name if they're in different scopes:
 
 ```javascript
 //Scope 1:
@@ -877,11 +885,11 @@ Here's a few reasons:
 }
 ```
 
-Eventually, regular expressions will become very convoluted when you have to account for edge cases; whether it be scope, or tiny variations in syntax. Babel doesn't have this problem, as you can use built it functionality to make transformations with respect to scope and state.
+Eventually, regular expressions will become very convoluted when you have to account for edge cases; whether it be scope or tiny variations in syntax. Babel doesn't have this problem, as you can use built-in functionality to make transformations with respect to scope and state.
 
 2. **The Babel API has a lot of useful features.**
 
-   Here's a few useful things you can do with the built-in Babel API:
+   Here are a few useful things you can do with the built-in Babel API:
 
    - Easily target certain nodes
    - Handle scope when renaming/replacing variables
@@ -891,20 +899,19 @@ Eventually, regular expressions will become very convoluted when you have to acc
    - Containers/Lists: Check if a node is in a container/list, and get all of its siblings
 
 3. **Good for static and dynamic analysis**
-   - Inherently, parsing the code into an AST and applying transformations will not execute the code. But Babel also has functionality to evaluate nodes (ex. BinaryExpressions) and return their actual value. Babel can also generate code from nodes, which can be evaluated in a with `eval` or the NodeJS VM.
+   - Inherently, parsing the code into an AST and applying transformations will not execute the code. But Babel also has the functionality to evaluate nodes (ex. BinaryExpressions) and return their actual value. Babel can also generate code from nodes, which can be evaluated with `eval` or the NodeJS VM.
 
 # Conclusion + Additional Resources
 
-That was a short demonstration of transforming a piece of code with Babel! The next articles will be more in-depth, and include practical cases of reversing obfuscation techniques you might encounter in the wild.
+That was a short demonstration of transforming a piece of code with Babel! The next articles will be more in-depth and include practical cases of reversing obfuscation techniques you might encounter in the wild.
 
-For the sake of time, I didn't go to deep into the behind the scenes of Babel or all of it's API methods. In the future, I may decide to update this article or write a new one with more detailed explanations, examples, and documentation. But, I really recommend getting a solid fundamental understanding of Babel's features before continuing on in this series. Most notably, I didn't cover usage of the `@babel/types` package in this article, but it will be utilized in future ones. I'd recommend giving these resources a look:
+For the sake of time, I didn't go too deep into the behind-the-scenes of Babel or all of its API methods. In the future, I may decide to update this article or write a new one with more detailed explanations, examples, and documentation. But, I really recommend getting a solid fundamental understanding of Babel's features before continuing on in this series. Most notably, I didn't cover the usage of the `@babel/types` package in this article, but it will be utilized in future ones. I'd recommend giving these resources a look:
 
 [Official Babel Docs](https://babeljs.io/docs/en/)
 [Babel Plugin Handbook](https://github.com/jamiebuilds/babel-handbook/blob/master/translations/en/plugin-handbook.md)
 [Video: @babel/how-to](https://www.youtube.com/watch?v=UeVq_U5obnE)
 
 Here are links to the other articles in this series:
-
 
 - [Deobfuscating Javascript via AST: Reversing Various String Concealing Techniques](http://SteakEnthusiast.github.io/2022/05/22/Deobfuscating-Javascript-via-AST-Manipulation-Various-String-Concealing-Techniques/)
 
@@ -917,7 +924,6 @@ Here are links to the other articles in this series:
 - [Deobfuscating Javascript via AST: Replacing References to Constant Variables with Their Actual Value](http://SteakEnthusiast.github.io/2022/05/31/Deobfuscating-Javascript-via-AST-Replacing-References-to-Constant-Variables-with-Their-Actual-Value/)
 
 - [Deobfuscating Javascript via AST: Removing Dead or Unreachable Code](http://SteakEnthusiast.github.io/2022/06/04/Deobfuscating-Javascript-via-AST-Removing-Dead-or-Unreachable-Code/)
-
 
 You can also view the source code for all my deobfuscation tutorial posts in [this repository](https://github.com/SteakEnthusiast/Supplementary-AST-Based-Deobfuscation-Materials/)
 

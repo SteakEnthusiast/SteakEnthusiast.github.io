@@ -7,11 +7,14 @@ tags:
   - Javascript
   - Deobfuscation
   - Babel
+  - Reverse Engineering
+categories:
+  - Deobfuscation
 ---
 
 # Preface
 
-This article assumes a preliminary understanding of Abstract Syntex Tree structure and [BabelJS](https://babeljs.io/). [Click Here](http://SteakEnthusiast.github.io/none) to read my introductory article on the usage of Babel.
+This article assumes a preliminary understanding of Abstract Syntax Tree structure and [BabelJS](https://babeljs.io/). [Click Here](http://SteakEnthusiast.github.io/2022/05/21/Deobfuscating-Javascript-via-AST-An-Introduction-to-Babel/) to read my introductory article on the usage of Babel.
 
 I'll be honest, this transformation is less "deobfuscation" than it is "making our script look slightly prettier". Even so, I think that it's worth mentioning since it's still an interesting example of how to manipulate an abstract syntax tree with babel. So, without further ado, let's get into it!
 
@@ -26,7 +29,7 @@ let baz = Date["now"]();
 let qux = foo[3];
 ```
 
-The above code is an example of using bracket notation to access properties of an object.
+The above code is an example of using bracket notation to access the properties of an object.
 If you're familiar with Javascript, you probably know that the code above can also be written like this:
 
 ```javascript
@@ -42,14 +45,14 @@ So, how can we go about automatically transforming the first snippet to look lik
 
 # Analysis Methodology
 
-Let's start by pasting both snippets into [AST Explorer](https://astexplorer.net/) to see the differences. First, we'll investigate the first snippet. Our targets of interest are the first an second lines of the script:
+Let's start by pasting both snippets into [AST Explorer](https://astexplorer.net/) to see the differences. First, we'll investigate the first snippet. Our targets of interest are the first and second lines of the script:
 
 ![A closer look at one of the nodes of interest; first code snippet](dotoperator1.png)
 
 So, we can see that our nodes of interest are of type _MemberExpression_. Each node has 3 important properties:
 
 - `path.node.object`, which stores the object being accessed (in this case, the `Date` object)
-- `path.node.property`, which stores the property to access (in this case, the it's the `Now` property and of type _StringLiteral_)
+- `path.node.property`, which stores the property to access (in this case, it's the `Now` property and of type _StringLiteral_)
 - `path.node.computed`, which tells us whether the MemberExpression is _computed_, **(i.e, a value of true means uses _bracket notation_)** or not **(i.e, a value of false means use _dot notation_)**. In this case, the `computed` property is set to `true` since bracket notation is being used.
 
 Now, let's analyze the same node on AST explorer, but for the second code snippet:
@@ -150,8 +153,8 @@ function writeCodeToFile(code) {
 deobfuscate(readFileSync("./obfuscated.js", "utf8"));
 
 ```
-After processing the obfuscated script with the babel plugin above, we get the following result:
 
+After processing the obfuscated script with the babel plugin above, we get the following result:
 
 # Post-Deobfuscation Result
 
@@ -166,25 +169,24 @@ And the dot operator is restored!
 
 # Conclusion
 
-So, today we discussed a simple but efficient way to restore the dot operator for MemberExpressions. After converting bracket notation to dot notation, it becomes a lot easier on the eyes to differentiate between object member accessors and array element accessors. This is because of our _StringLiteral_ check on `path.node.property'.
+So, today we discussed a simple but efficient way to restore the dot operator for MemberExpressions. After converting bracket notation to dot notation, it becomes a lot easier for us to differentiate between object member accessors and array element accessors. This is because of our _StringLiteral_ check on `path.node.property'.
 
 I'll leave you with one useful piece of advice. You should probably run this plugin as a sort of "clean up transformer", only after replacing all constant variables with their actual value. This is because if you don't substitute in the actual value of a variable, this plugin won't have any useful effect. For example, running the plugin on this code:
 
 ```javascript
-let foo = "navigator"
-let bar = window[foo]
+let foo = "navigator";
+let bar = window[foo];
 ```
 
 Will give us:
+
 ```javascript
-let foo = "navigator"
-let bar = window[foo]
+let foo = "navigator";
+let bar = window[foo];
 ```
 
-Which is the exact same thing. To restore it to `let bar = window.navigator`, we first must replace all references to the constant variable `foo` with it's actual value, `"navigator"`. If you want to learn how to do that, you can read [my article on replacing constant variables with their actual value](https://localhost:400/none).
+Which is the exact same thing. To restore it to `let bar = window.navigator`, we first must replace all references to the constant variable `foo` with its actual value, `"navigator"`. If you want to learn how to do that, you can read [my article on replacing constant variables with their actual value](https://SteakEnthusiast.github.io/2022/05/31/Deobfuscating-Javascript-via-AST-Replacing-References-to-Constant-Variables-with-Their-Actual-Value/).
 
 If you're interested, you can find the source code for all the examples in [this repository](https://github.com/SteakEnthusiast/Supplementary-AST-Based-Deobfuscation-Materials).
 
 I hope this article helped you learn something new. Thanks for reading, and happy reversing!
-
-

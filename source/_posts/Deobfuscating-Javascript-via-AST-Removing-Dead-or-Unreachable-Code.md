@@ -5,15 +5,18 @@ tags:
   - Javascript
   - Deobfuscation
   - Babel
+  - Reverse Engineering
+categories:
+  - Deobfuscation
 ---
 
 # Preface
 
-This article assumes a preliminary understanding of Abstract Syntex Tree structure and [BabelJS](https://babeljs.io/). [Click Here](http://SteakEnthusiast.github.io/none) to read my introductory article on the usage of Babel.
+This article assumes a preliminary understanding of Abstract Syntax Tree structure and [BabelJS](https://babeljs.io/). [Click Here](http://SteakEnthusiast.github.io/2022/05/21/Deobfuscating-Javascript-via-AST-An-Introduction-to-Babel/) to read my introductory article on the usage of Babel.
 
 # Definitions
 
-Both _dead code_ and _unreachable code_ are obfuscation techniques relying on the injection of junk code that does not alter the main functionality of a program. Their only purpose is to bloat the appearence of the appearance of the source code to make it more confusing for a human to analyze. Though being similar, there's a slight difference between the two.
+Both _dead code_ and _unreachable code_ are obfuscation techniques relying on the injection of junk code that does not alter the main functionality of a program. Their only purpose is to bloat the appearance of the source code to make it more confusing for a human to analyze. Though being similar, there's a slight difference between the two.
 
 ## What is Dead Code?
 
@@ -21,7 +24,7 @@ Both _dead code_ and _unreachable code_ are obfuscation techniques relying on th
 
 ## What is unreachable code?
 
-**_Unreachable code_** is a section of code that is never executed, since there is no existing control flow path that leads to it's execution. This results in an increase in file size, but shouldn't affect the runtime of the program since it's contents are never executed.
+**_Unreachable code_** is a section of code that is never executed, since there is no existing control flow path that leads to its execution. This results in an increase in file size, but shouldn't affect the runtime of the program since its contents are never executed.
 
 # Examples
 
@@ -87,21 +90,22 @@ Let's begin our analysis by pasting the obfuscated script into [AST Explorer](ht
 
 ![A view of the obfuscated code in AST Explorer](unusedVars1.PNG)
 
-We can observe from the AST structure that each new variable creations results in the creation of one of two types of nodes:
+We can observe from the AST structure that each new variable creation results in the creation of one of two types of nodes:
 
-1. A _VariableDeclaration_, for variables assigned with `let`, `var`, and `const`. 2. Each of these _VariableDeclarations_ contain an array of _VariableDeclarators_. It is the _VariableDeclarator_ that actually contains the information of the variables, including its `id` and `init` value. So, we can make _VariableDeclarator_ nodes our focus of interest to avoid unnecessary extra traversals.
+1. A _VariableDeclaration_, for variables assigned with `let`, `var`, and `const`. 2. Each of these _VariableDeclarations_ contains an array of _VariableDeclarators_. It is the _VariableDeclarator_ that actually contains the information of the variables, including its `id` and `init` values. So, we can make _VariableDeclarator_ nodes our focus of interest to avoid unnecessary extra traversals.
+
 2. A _FunctionDeclaration_, for functions declared with a [function statement](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function#specifications).
 
 Based on this, we can deem our target node types of interest to be _VariableDeclarator_ and _FunctionDeclaration_.
 
-Recall that we want to identify all **_constant_** variables and **non-referenced** variables, then remove them. It's important to note that variables in different scopes (e.g. local vs. global), may share the same name but have different values. So, we cannot simply base our solution off of how many times a variable name occurs in a program.
+Recall that we want to identify all **_constant_** variables and **non-referenced** variables, then remove them. It's important to note that variables in different scopes (e.g. local vs. global), may share the same name but have different values. So, we cannot simply base our solution on how many times a variable name occurs in a program.
 
-This would be a convoluted process if not for Babel's 'Scope' API. I won't dive too deep into the available scope API's, but you can refer to the [Babel Plugin Handbook](https://github.com/jamiebuilds/babel-handbook/blob/master/translations/en/plugin-handbook.md#toc-scopes) to learn more about them. In our case, the `scope.getBinding(${identifierName})` method will be incredibly useful for us, as it directly returns information regarding if a variable is constant and all of its references (or lack thereof).
+This would be a convoluted process if not for Babel's 'Scope' API. I won't dive too deep into the available scope APIs, but you can refer to the [Babel Plugin Handbook](https://github.com/jamiebuilds/babel-handbook/blob/master/translations/en/plugin-handbook.md#toc-scopes) to learn more about them. In our case, the `scope.getBinding(${identifierName})` method will be incredibly useful for us, as it directly returns information regarding if a variable is constant and all of its references (or lack thereof).
 
 We can use our observations to construct the following deobfuscation logic:
 
 1. Traverse the AST for _VariableDeclarators_ and _FunctionDeclarations_. Since both node types have both have the `id` property, we can write a single plugin for both.
-   - **Tip**: _To write a function that works for multiple visitor nodes, we can add an_ `|` _seperating them in the method name as a string like this:_ `"VariablDeclarator|FunctionDeclaration"`
+   - **Tip**: _To write a function that works for multiple visitor nodes, we can add an_ `|` _seperating them in the method name as a string like this:_ `"VariableDeclarator|FunctionDeclaration"`
 2. Use the `path.scope.getBinding(${identifierName})` method with the name of the current variable as the argument.
 3. If the method returns `constant` as `true` and `referenced` as `false`, the declaration is considered to be dead code and can be safely removed with `path.removed()`
 
@@ -206,13 +210,27 @@ An _empty statement_ is simply a semi-colon (`;`) with no same-line code before 
 /**
  * emptyStatementSrc.js
  * Ugly 'obfuscated' code.
- */
-const a = 2;
-const b = 3;
-console.log("a is", a, "b is", b);
+*/
+;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;
+const a = 2;;;;;;;;;
+;;;;;;;;;
+;;;;
+;;;;;;;;;;;;;;
+;;;;;
+;;;;;;;;;;;;;;;;;;
+const b = 3;;;;;;;;;;;;;;;
+;;;;;;;;;;;
+;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;
+;;;;;;;
+;;;
+;;
+console.log("a is", a, "b is", b);;;;;;;;;;;;;;;
 ```
 
-The presence of empty statements doesn't really add much to obfuscation, but removing them will still remove unecessary noise and optimize the appearence.
+The presence of empty statements doesn't really add much to obfuscation, but removing them will still remove unnecessary noise and optimize the appearance.
 
 ### Analysis Methodology
 
@@ -251,7 +269,7 @@ function deobfuscate(source) {
   //Parse AST of Source Code
   const ast = parser.parse(source);
 
-  // Visitor for constant folding
+  // Visitor for deleting empty statements
   const deleteEmptyStatementsVisitor = {
     EmptyStatement(path) {
       path.remove();
@@ -353,7 +371,7 @@ As always, we start our analysis by pasting the code into [AST Explorer](https:/
 
 ![A view of the obfuscated code in AST Explorer](unreachable1.PNG)
 
-We can see that at the top-level, the file consists of _IfStatements_ and an _ExpressionStatement_. If we expand the _ExpressionStatement_, we can see that ternary operator logical expressions are actually of type _ConditionalExpression_. Expanding an _IfStatement_ and a _ConditionalExpression_ for comparison, we can notice some similarities:
+We can see that at the top level, the file consists of _IfStatements_ and an _ExpressionStatement_. If we expand the _ExpressionStatement_, we can see that ternary operator logical expressions are actually of type _ConditionalExpression_. Expanding an _IfStatement_ and a _ConditionalExpression_ for comparison, we can notice some similarities:
 
 ![Comparison of IfStatement vs. ConditionalExpression nodes](unreachable2.PNG)
 
@@ -361,7 +379,7 @@ We can see that aside from their type, both an _IfStatement_ and a _ConditionalE
 
 - A `test` property, which is the test condition. It will either evaluate to true or false.
 
-- A `consequent` property, which contains the code to be executed if `test` evalutes to a truthy value.
+- A `consequent` property, which contains the code to be executed if `test` evaluates to a truthy value.
 
 - A `alternate` property, which contains the code to be executed if `test` evaluates to a falsy value.
   - Note: This property is optional, since an If Statement need not be accompanied by an else.
@@ -377,7 +395,7 @@ The steps for creating the deobfuscator are as follows:
 2. When one is encountered, use the `NodePath.evaluateTruthy()` method on the `test` property's NodePath.
 3. if the `NodePath.evaluateTruthy()` method returns true:
    1. Replace the path with the contents of `consequent`.
-   2. _(Optional)_ If the consequent`is contained within a _BlockStatement_ (curly braces), we can replace it with the`consequent.body` to get rid of the curly braces.
+   2. _(Optional)_ If the consequent is contained within a _BlockStatement_ (curly braces), we can replace it with the `consequent.body` to get rid of the curly braces.
 4. if the `NodePath.evaluateTruthy()` method returns false:
    1. If the `alternate` property exists, replace the path with its contents.
    2. _(Optional)_ If the alternate is contained within a _BlockStatement_ (curly braces), we can replace it with the `alternate.body` to get rid of the curly braces.
@@ -408,7 +426,7 @@ function deobfuscate(source) {
   //Parse AST of Source Code
   const ast = parser.parse(source);
 
-  // Visitor for constant folding
+  // Visitor for simplifying if statements and logical statements
   const simplifyIfAndLogicalVisitor = {
     "ConditionalExpression|IfStatement"(path) {
       let { consequent, alternate } = path.node;
@@ -477,10 +495,11 @@ And only the code which is designed to execute persists, a full restoration of t
 
 # Conclusion
 
-Cleaning up dead/unreachable code is an essential component of the deobfuscation process. I would recommend doing at least twice per program:
+Cleaning up dead/unreachable code is an essential component of the deobfuscation process. I would recommend doing it at least twice per program:
 
-1. Firstly, at the start of the deobfuscation process. This will make the obfuscated script much more managable to navigate, as you can focus on the important parts of the program instead of junk code
-2. At the end of the deobfuscation process, as part of the clean-up stage. Simplfying obfuscated code tends to reveal more dead code that can be removed, and removing it at the end results in a cleaner final product.
+1. Firstly, at the start of the deobfuscation process. This will make the obfuscated script much more manageable to navigate, as you can focus on the important parts of the program instead of junk code
+
+2. At the end of the deobfuscation process, as part of the clean-up stage. Simplifying obfuscated code tends to reveal more dead code that can be removed, and removing it at the end results in a cleaner final product.
 
 This article also gave a nice introduction to one of the useful Babel API methods. Unfortunately, there isn't much good documentation out there aside from the [Babel Plugin Handbook](https://github.com/jamiebuilds/babel-handbook/blob/master/translations/en/plugin-handbook.md). However, you can discover a lot more useful features Babel has to offer by reading its source code, or using the debugger of an IDE to list and test helper methods (the latter of which I personally prefer 😄).
 

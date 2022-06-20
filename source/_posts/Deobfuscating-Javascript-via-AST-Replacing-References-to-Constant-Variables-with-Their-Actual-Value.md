@@ -4,18 +4,24 @@ title: >-
   with Their Actual Value
 date: 2022-05-31 11:10:37
 tags:
+  - Javascript
+  - Deobfuscation
+  - Babel
+  - Reverse Engineering
+categories:
+  - Deobfuscation
 ---
 
 # Preface
 
-This article assumes a preliminary understanding of Abstract Syntex Tree structure and [BabelJS](https://babeljs.io/). [Click Here](http://SteakEnthusiast.github.io/none) to read my introductory article on the usage of Babel.
+This article assumes a preliminary understanding of Abstract Syntax Tree structure and [BabelJS](https://babeljs.io/). [Click Here](http://SteakEnthusiast.github.io/2022/05/21/Deobfuscating-Javascript-via-AST-An-Introduction-to-Babel/) to read my introductory article on the usage of Babel.
 
 # Definition of a Constant Variable
 
 For our purposes, a constant variable is any variable that meets _**all three**_ of the following conditions:
 
 - The variable is declared **AND** initialized at the same time.
-- The variable is initialized to a _literal value_, e.g. _StringLiteral_, _NumericLiteral_, _BooleanLiteral_ etc.
+- The variable is initialized to a _literal value_, e.g. _StringLiteral_, _NumericLiteral_, _BooleanLiteral_, etc.
 - The variable is never reassigned another value in the script
 
 Therefore, a variable's declaration keyword (`let`,`var`,`const`) has no bearing on whether or not it is a constant.
@@ -43,7 +49,7 @@ In this example:
 - `f` is not a constant, since it is reassigned after initialization: `f+=2`
 - `g` is not a constant, since it is not declared and initialized at the same time.
 
-The reasoning for declared but uninitialized variables not counting as a constant is important concept to understand. Take the following script as an example:
+The reasoning for declared but uninitialized variables not counting as a constant is an important concept to understand. Take the following script as an example:
 
 ```javascript
 let foo; // Initialization
@@ -212,19 +218,19 @@ const req = function () {
 
 ## Analysis Methodology
 
-Obviously, the obfuscated script is much more difficult to read. If you were to manually deobfuscate it, you'd have to search up each referenced variable and replace each occurence of it with the actual variable. That could get tedious for a large amount of variables, so we're going to do it the Babel way. As always, let's start by pasting the code into [AST Explorer](https://astexplorer.net/).
+Obviously, the obfuscated script is much more difficult to read. If you were to manually deobfuscate it, you'd have to search up each referenced variable and replace each occurrence of it with the actual variable. That could get tedious for a large number of variables, so we're going to do it the Babel way. As always, let's start by pasting the code into [AST Explorer](https://astexplorer.net/).
 
 ![View of the obfuscated code in AST Explorer](replacing1.PNG)
 
-Our target of interest are the extra variable declarations. Let's take a closer look at one of them:
+Our targets of interest are the extra variable declarations. Let's take a closer look at one of them:
 
 ![A closer look at one of the nodes of interest](replacing2.PNG)
 
-So, the target node type appears to be of type _VariableDeclaration_. However, each of these _VariableDeclarations_ contain an array of _VariableDeclarators_. It is the _VariableDeclarator_ that actually contains the information of the variables, including its `id` and `init` value. So, the actual node type we should focus on are _VariableDeclarators_.
+So, the target node type appears to be of type _VariableDeclaration_. However, each of these _VariableDeclarations_ contains an array of _VariableDeclarators_. It is the _VariableDeclarator_ that actually contains the information of the variables, including its `id` and `init` values. So, the actual node type we should focus on is _VariableDeclarator_.
 
 Recall that we want to identify all **_constant_** variables, then replace all their **_references_** with their actual value. It's important to note that variables in different scopes (e.g. local vs. global), may share the same name but have different values. So, the solution isn't as simple as blindly replacing all matching identifiers with their initial value.
 
-This would be a convoluted process if not for Babel's 'Scope' API. I won't dive too deep into the available scope API's, but you can refer to the [Babel Plugin Handbook](https://github.com/jamiebuilds/babel-handbook/blob/master/translations/en/plugin-handbook.md#toc-scopes) to learn more about them. In our case, the `scope.getBinding(${identifierName})` method will be incredibly useful for us, as it directly returns information regarding if a variable is constant and all of its references.
+This would be a convoluted process if not for Babel's 'Scope' API. I won't dive too deep into the available scope APIs, but you can refer to the [Babel Plugin Handbook](https://github.com/jamiebuilds/babel-handbook/blob/master/translations/en/plugin-handbook.md#toc-scopes) to learn more about them. In our case, the `scope.getBinding(${identifierName})` method will be incredibly useful for us, as it directly returns information regarding if a variable is constant and all of its references.
 
 Putting all this knowledge together, the steps for creating the deobfuscator are as follows:
 
