@@ -753,7 +753,7 @@ let helloStatement =
 
 I'm sure some of you might be wondering why the algorithm doesn't work without manually adding the brackets. This is outside of the scope of this article. However, if you're interested in the reason for this intricacy and an algorithm that simplifies it _**without needing to manually add the brackets**_, check out my article about _[Constant Folding](http://SteakEnthusiast.github.io/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/)_. But for now, I'll move on to another example.
 
-## Example #3: String Encryption
+## Example #4: String Encryption
 
 First and foremost, string encryption **_IS NOT_** the same as encoding strings as hexadecimal or unicode. Whereas the javascript interpreter will automatically interpret`"\x48\x65\x6c\x6c\x6f"` as `"Hello"`, encrypted strings must be passed through to a decryption function and evaluated _before_ they become useful to the javascript engine (or representable as a StringLiteral by Babel).
 
