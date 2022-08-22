@@ -323,14 +323,38 @@ Using those observations, we can come up with the following logic to restore the
 2. After finding the declaration, we can:
    1. Store the string array's name in a variable, `stringArrayName`
    2. Store a copy of all its elements in a variable, `stringArrayElements`
-   3. Delete the original node once all references are replaced.
-3. Find any references to the string array. To do this, traverse its parent scope for any _MemberExpressions_ that match the following criteria: 2. The referenced object is of type Identifier
-   1. Computed property set to true
-   2. The name of the object's identifier is equal to the name of the string array's identifier, `stringArrayName`
-   3. The _property_ node is of type _NumericLiteral_
-4. When a matching _MemberExpression_ node is found, use the value stored in _property_ to lookup the corresponding StringLiteral in our `stringArrayElements` array and replace the original _MemberExpression_ node with it.
+3. Find all references to the string array. One of the most powerful features of Babel is it's support for _scopes_.
 
-The babel implementation is shown below:
+   From the [Babel Plugin Handbook](https://github.com/jamiebuilds/babel-handbook/blob/master/translations/en/plugin-handbook.md#toc-bindings):
+
+   > References all belong to a particular scope; this relationship is known as a binding.
+
+   We'll take advantage of this feature by doing the following:
+
+   1. To ensure that we are getting the references to the correct identifier, we will get the path of the `id` property and store it in a variable, `idPath`.
+   2. We will then get the binding of the string array, using `idPath.scope.getBinding(stringArrayName)` and store it in a variable, `binding`.
+   3. If the binding does not exist, we will skip this variable declarator by returning early.
+   4. The `constant` property of `binding` is a boolean determining if the variable is constant. If the value of `constant` is false (i.e, it is reassigned/modified), replacing the references will be unsafe. In that case, we will return early.
+   5. The `referencePaths` property of `binding` is an array containing every NodePaths that reference the string array. We'll extract this to its own variable.
+
+4. We will create a variable, `shouldRemove`, which will be a flag dictating whether or not we can remove the original _VariableDeclaration_. By default, we'll initialize it to `true`. More on this in the next step.
+
+5. We will loop through each individual `referencePath` of the `referencePaths` array, and check if they meet all the following criteria:
+
+   1. The parent NodePath of the current `referencePath` must be a MemberExpression. The reason we are checking the parent node is because the `referencePath` refers to the actual referenced identifier (in our example, `_0xcd45`), which would be contained in a MemberExpression parent node (such as `_0xcd45[0]`)
+   2. The parent NodePath's `object` field must be the the current referencePath's node (that is, it must be the string array's identifier)
+   3. The parent NodePath's `computed` field must be `true`. This means that bracket notation is being used for member access (ex. `_0xcd45[0]`).
+   4. The parent NodePath's `property` field must be of type `NumericLiteral`, so we can use it's value to access the corresponding node by index.
+
+6. If all of these criteria are met, we can lookup the corresponding node in our `stringArrayElements` array using the value stored in the parent NodePath's `property` field, and safely replace the `referencePath`'s parent path with it (that is, replace the entire MemberExpression with the actual string).
+7. If at least one of these conditions are not met for the current `referencePath`, we will be unable to replace the referencePath. In this case, removing the original VariableDeclarator of the string array would be unsafe, since these references to it would be in the final code. Therefore, we should set our `shouldDelete` flag to false. We'll then skip to the next iteration of the for loop.
+
+8. After we have finished iterating over all the referencePaths, we will use the value of our `shouldRemove` flag to determine if it is safe to remove the original _VariableDeclaration_.
+
+- If `shouldRemove` still has the default value of `true`, that means all referencePaths have been successfully replaced, and the original declaration of the string array is no longer needed, so we can remove it.
+- If `shouldRemove` is equal to `false`, we encountered a referencePath that we could not replace. It is then unsafe to remove the original declaration of the string array, so we don't remove it.
+
+The Babel implementation is shown below:
 
 ### Babel Deobfuscation Script
 
@@ -339,7 +363,8 @@ The babel implementation is shown below:
  * Deobfuscator.js
  * The babel script used to deobfuscate the target file
  *
-*/
+ */
+
 const parser = require("@babel/parser");
 const traverse = require("@babel/traverse").default;
 const t = require("@babel/types");
@@ -361,44 +386,69 @@ function deobfuscate(source) {
     VariableDeclaration(path) {
       const { declarations } = path.node;
       if (
-        declarations.length !== 1 || // The VariableDeclaration node must declare only ONE variable.
-        !t.isArrayExpression(declarations[0].init) // It's corresponding VariableDeclarator node must have an init property of type ArrayExpression
-      ) {
+        // The VariableDeclaration node must declare only ONE variable.
+        declarations.length !== 1 ||
+        // It's corresponding VariableDeclarator node must have an init property of type ArrayExpression
+        !t.isArrayExpression(declarations[0].init)
+      )
         return; //skip
-      }
 
       const stringArrayElements = [];
-
-
-
       for (const elementNode of declarations[0].init.elements) {
         // ALL of the elements of the ArrayExpression_must be of type StringLiteral
-        if (!t.isStringLiteral(elementNode)) {
-          return;
-        } else {
-          stringArrayElements.push(elementNode); // Store a copy of all its elements in a variable
+        if (!t.isStringLiteral(elementNode)) return;
+        else {
+          // Store a copy of all its elements in a variable
+          stringArrayElements.push(elementNode);
         }
       }
-      const stringArrayName = declarations[0].id.name; // Store the string array's name in a variable
+      // Store the string array's name in a variable
+      const stringArrayName = declarations[0].id.name;
+      // Get the path of the identifier. By using this path, we ensure we will ALWAYS correctly refer to the scope of the array
+      const idPath = path.get("declarations.0.id");
+      // Get the binding of the array.
+      const binding = idPath.scope.getBinding(stringArrayName);
 
-      // Traverse the container the string array resides in
-      path.parentPath.traverse({
-        MemberExpression(innerPath) {
-          const { object, property, computed } = innerPath.node;
-          if (
-            !t.isIdentifier(object) || // Is the referenced object is of type Identifier?
-            !computed || // Is the computed property set to true?
-            object.name !== stringArrayName || // Is the name of the object's identifier is equal to the name of the string array's identifier?
-            !t.isNumericLiteral(property) // Is the property node of type NumericLiteral?
-          ) {
-            return; // skip
-          }
-          innerPath.replaceWith(stringArrayElements[property.value]); // Replace MemberExpression with computed value
-        },
-      });
+      if (!binding) return;
 
-      path.remove(); // Delete the string array since it's useless now
-      path.stop(); //stop traversing after first declaration (the declaration for the master array)
+      const { constant, referencePaths } = binding;
+
+      // This wouldn't be safe if the array was not constant.
+      if (!constant) return;
+      // This decides if we can remove the array or not.
+      // If there are any references to the array that cannot be replaced, it is unsafe to remove the original VariableDeclaration.
+      let shouldRemove = true;
+
+      for (const referencePath of referencePaths) {
+        const { parentPath: refParentPath } = referencePath;
+        const { object, computed, property } = refParentPath.node;
+        // Criteria to be a valid path for replacement:
+        // The refParent must be of type MemberExpression
+        // The "object" field of the refParent must be a reference to the array (the original referencePath)
+        // The "computed" field of the refParent must be true (indicating use of bracket notation)
+        // The "property" field of the refParent must be a numeric literal, so we can access the corresponding element of the array by index.
+        if (
+          !(
+            t.isMemberExpression(refParentPath.node) &&
+            object == referencePath.node &&
+            computed == true &&
+            t.isNumericLiteral(property)
+          )
+        ) {
+          // If the above conditions aren't met, we've run into a reference that can't be replaced.
+          // Therefore, it'd be unsafe to remove the original variable declaration, since it will still be referenced after our transformation has completed.
+          shouldRemove = false;
+          continue;
+        }
+
+        // If the above conditions are met:
+
+        // Replace the parentPath of the referencePath (the actual MemberExpression) with it's actual value.
+
+        refParentPath.replaceWith(stringArrayElements[property.value]);
+      }
+
+      if (shouldRemove) path.remove();
     },
   };
 
