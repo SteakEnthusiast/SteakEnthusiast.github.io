@@ -137,7 +137,7 @@ function deobfuscate(source) {
   //Parse AST of Source Code
   const ast = parser.parse(source);
 
-  // Visitor for constant folding
+  // Visitor for unused variable removal
   const removedUnusedVariablesVisitor = {
     "VariableDeclarator|FunctionDeclaration"(path) {
       const { node, scope } = path;
@@ -210,24 +210,10 @@ An _empty statement_ is simply a semi-colon (`;`) with no same-line code before 
 /**
  * emptyStatementSrc.js
  * Ugly 'obfuscated' code.
-*/
-;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;
-const a = 2;;;;;;;;;
-;;;;;;;;;
-;;;;
-;;;;;;;;;;;;;;
-;;;;;
-;;;;;;;;;;;;;;;;;;
-const b = 3;;;;;;;;;;;;;;;
-;;;;;;;;;;;
-;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;
-;;;;;;;
-;;;
-;;
-console.log("a is", a, "b is", b);;;;;;;;;;;;;;;
+ */
+const a = 2;
+const b = 3;
+console.log("a is", a, "b is", b);
 ```
 
 The presence of empty statements doesn't really add much to obfuscation, but removing them will still remove unnecessary noise and optimize the appearance.
