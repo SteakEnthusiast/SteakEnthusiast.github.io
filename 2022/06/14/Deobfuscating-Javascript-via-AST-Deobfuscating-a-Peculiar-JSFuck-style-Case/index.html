@@ -1,0 +1,817 @@
+
+
+<!DOCTYPE html>
+<html lang="en" data-default-color-scheme=dark>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/../images/ico.jpg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="William Khem Marquez">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="PrefaceThis article assumes a preliminary understanding of Abstract Syntax Tree structure and BabelJS. Click Here to read my introductory article on the usage of Babel. It also assumes that you’ve rea">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Deobfuscating Javascript via AST: A Peculiar JSFuck-esque Case">
+<meta property="og:url" content="http://steakenthusiast.github.io/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/index.html">
+<meta property="og:site_name" content="ReverseJS">
+<meta property="og:description" content="PrefaceThis article assumes a preliminary understanding of Abstract Syntax Tree structure and BabelJS. Click Here to read my introductory article on the usage of Babel. It also assumes that you’ve rea">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck1.PNG">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck2.PNG">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck3.png">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck4.png">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck5.png">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck6.PNG">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck7.png">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck8.png">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck9.PNG">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck10.png">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck11.PNG">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck12.PNG">
+<meta property="article:published_time" content="2022-06-14T16:46:47.000Z">
+<meta property="article:modified_time" content="2023-10-11T01:24:11.689Z">
+<meta property="article:author" content="William Khem Marquez">
+<meta property="article:tag" content="Javascript">
+<meta property="article:tag" content="Deobfuscation">
+<meta property="article:tag" content="Babel">
+<meta property="article:tag" content="Reverse Engineering">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://steakenthusiast.github.io/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck1.PNG">
+  
+  
+  
+  <title>Deobfuscating Javascript via AST: A Peculiar JSFuck-esque Case-ReverseJS</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"steakenthusiast.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":40,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>ReverseJS</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>Home</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>Archives</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>Categories</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>Tags</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                <span>About</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" target="_blank" rel="noopener" href="https://github.com/SteakEnthusiast">
+                <i class="iconfont icon-github-fill"></i>
+                <span></span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" target="_blank" rel="noopener" href="https://www.linkedin.com/in/william-khem-marquez-3232b9222/">
+                <i class="iconfont icon-linkedin-fill"></i>
+                <span></span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/../images/background.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Deobfuscating Javascript via AST: A Peculiar JSFuck-esque Case"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2022-06-14 12:46" pubdate>
+          June 14, 2022 pm
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Deobfuscating Javascript via AST: A Peculiar JSFuck-esque Case</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h1 id="Preface"><a href="#Preface" class="headerlink" title="Preface"></a>Preface</h1><p>This article assumes a preliminary understanding of Abstract Syntax Tree structure and <a target="_blank" rel="noopener" href="https://babeljs.io/">BabelJS</a>. <a href="http://steakenthusiast.github.io/2022/05/21/Deobfuscating-Javascript-via-AST-An-Introduction-to-Babel/">Click Here</a> to read my introductory article on the usage of Babel.</p>
+<p>It also assumes that you’ve read my article about constant folding. If you haven’t already read it, you can do so by clicking <a href="https://steakenthusiast.github.io/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/">here</a></p>
+<h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p><a target="_blank" rel="noopener" href="http://www.jsfuck.com/">JSFuck</a> is an esoteric and educational programming style based on the atomic parts of JavaScript. It uses only six different characters to write and execute code. I won’t be covering the intricacies of how JSFuck operates, so please refer to the official site if you’d like to learn more about it.</p>
+<h1 id="Example-1-A-Simple-JSFuck-Case"><a href="#Example-1-A-Simple-JSFuck-Case" class="headerlink" title="Example 1: A Simple JSFuck Case"></a>Example 1: A Simple JSFuck Case</h1><p>Code obfuscated in JSFuck style tends to look like this:</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><code class="hljs js"><span class="hljs-comment">// JSFUckObfuscated.js</span><br>+~!+!+!~+!!(<br>  !+(<br>    !+[] +<br>    !![] +<br>    !![] +<br>    !![] +<br>    !![] +<br>    !![] +<br>    !![] +<br>    !![] +<br>    [] +<br>    (!+[] + !![] + !![]) +<br>    (!+[] + !![] + !![] + !![] + !![] + !![] + !![] + !![]) +<br>    (!+-[] + +-!![] + -[]) +<br>    (!+[] + !![] + !![] + !![]) +<br>    -~~~[] +<br>    (!+[] + !![] + !![] + !![] + !![] + !![]) +<br>    (!+[] + !![] + !![] + !![]) +<br>    (!+[] + !![] + !![] + !![] + !![] + !![] + !![])<br>  ) /<br>  +(<br>    !+[] +<br>    !![] +<br>    !![] +<br>    !![] +<br>    !![] +<br>    !![] +<br>    !![] +<br>    !![] +<br>    [] +<br>    (!+[] + !![] + !![] + !![] + !![] + !![] + !![] + !![]) +<br>    (!+[] + !![] + !![] + !![] + !![] + !![] + !![] + !![]) +<br>    (!+[] + !![] - []) +<br>    (!+[] + !![] + !![]) +<br>    (!+-[] + +-!![] + -[]) +<br>    (!+[] + !![] + !![] + !![] + !![] + !![] + !![] + !![]) +<br>    (!+[] + !![] + !![] + !![] + !![]) +<br>    (!+[] + !![] + !![] + !![] + !![] + !![] + !![])<br>  )<br>);<br></code></pre></td></tr></table></figure>
+
+<p>Let’s try evaluating this code in the console:</p>
+<p><img src="/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck1.PNG" srcset="/img/loading.gif" lazyload alt="Result of evaluating the code in the console"></p>
+<p>We can see that it leads to a constant: <code>-1</code>. Our goal is to simplify code looking like this down to a constant number.</p>
+<p>Before anything, let’s try reusing the <a href="https://steakenthusiast.github.io/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/#Babel-Deobfuscation-Script">code from my constant folding article</a>.</p>
+<h2 id="Trying-the-Original-Deobfuscator"><a href="#Trying-the-Original-Deobfuscator" class="headerlink" title="Trying the Original Deobfuscator"></a>Trying the Original Deobfuscator</h2><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Deobfuscator.js</span><br><span class="hljs-comment"> * The babel script used to deobfuscate the target file</span><br><span class="hljs-comment"> *</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">const</span> parser = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/parser&quot;</span>);<br><span class="hljs-keyword">const</span> traverse = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/traverse&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> t = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/types&quot;</span>);<br><span class="hljs-keyword">const</span> generate = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/generator&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> beautify = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;js-beautify&quot;</span>);<br><span class="hljs-keyword">const</span> &#123; readFileSync, writeFile &#125; = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;fs&quot;</span>);<br><br><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Main function to deobfuscate the code.</span><br><span class="hljs-comment"> * <span class="hljs-doctag">@param</span> source The source code of the file to be deobfuscated</span><br><span class="hljs-comment"> *</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">function</span> <span class="hljs-title function_">deobfuscate</span>(<span class="hljs-params">source</span>) &#123;<br>  <span class="hljs-comment">//Parse AST of Source Code</span><br>  <span class="hljs-keyword">const</span> ast = parser.<span class="hljs-title function_">parse</span>(source);<br><br>  <span class="hljs-comment">// Visitor for constant folding</span><br>  <span class="hljs-keyword">const</span> foldConstantsVisitor = &#123;<br>    <span class="hljs-title class_">BinaryExpression</span>(path) &#123;<br>      <span class="hljs-keyword">let</span> &#123; confident, value &#125; = path.evaluate(); <span class="hljs-comment">// Evaluate the binary expression</span><br>      <span class="hljs-keyword">if</span> (!confident) <span class="hljs-keyword">return</span>; <span class="hljs-comment">// Skip if not confident</span><br>      <span class="hljs-keyword">let</span> actualVal = t.<span class="hljs-title function_">valueToNode</span>(value); <span class="hljs-comment">// Create a new node, infer the type</span><br>      <span class="hljs-keyword">if</span> (!t.<span class="hljs-title function_">isLiteral</span>(actualVal)) <span class="hljs-keyword">return</span>; <span class="hljs-comment">// Skip if not a Literal type (e.g. StringLiteral, NumericLiteral, Boolean Literal etc.)</span><br>      path.<span class="hljs-title function_">replaceWith</span>(actualVal); <span class="hljs-comment">// Replace the BinaryExpression with the simplified value</span><br>    &#125;,<br>  &#125;;<br><br>  <span class="hljs-comment">// Execute the visitor</span><br>  <span class="hljs-title function_">traverse</span>(ast, foldConstantsVisitor);<br><br>  <span class="hljs-comment">// Code Beautification</span><br>  <span class="hljs-keyword">let</span> deobfCode = <span class="hljs-title function_">generate</span>(ast, &#123; <span class="hljs-attr">comments</span>: <span class="hljs-literal">false</span> &#125;).<span class="hljs-property">code</span>;<br>  deobfCode = <span class="hljs-title function_">beautify</span>(deobfCode, &#123;<br>    <span class="hljs-attr">indent_size</span>: <span class="hljs-number">2</span>,<br>    <span class="hljs-attr">space_in_empty_paren</span>: <span class="hljs-literal">true</span>,<br>  &#125;);<br>  <span class="hljs-comment">// Output the deobfuscated result</span><br>  <span class="hljs-title function_">writeCodeToFile</span>(deobfCode);<br>&#125;<br><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Writes the deobfuscated code to output.js</span><br><span class="hljs-comment"> * <span class="hljs-doctag">@param</span> code The deobfuscated code</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">function</span> <span class="hljs-title function_">writeCodeToFile</span>(<span class="hljs-params">code</span>) &#123;<br>  <span class="hljs-keyword">let</span> outputPath = <span class="hljs-string">&quot;output.js&quot;</span>;<br>  <span class="hljs-title function_">writeFile</span>(outputPath, code, <span class="hljs-function">(<span class="hljs-params">err</span>) =&gt;</span> &#123;<br>    <span class="hljs-keyword">if</span> (err) &#123;<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">&quot;Error writing file&quot;</span>, err);<br>    &#125; <span class="hljs-keyword">else</span> &#123;<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Wrote file to <span class="hljs-subst">$&#123;outputPath&#125;</span>`</span>);<br>    &#125;<br>  &#125;);<br>&#125;<br><br><span class="hljs-title function_">deobfuscate</span>(<span class="hljs-title function_">readFileSync</span>(<span class="hljs-string">&quot;./JSFuckObfuscated.js&quot;</span>, <span class="hljs-string">&quot;utf8&quot;</span>));<br></code></pre></td></tr></table></figure>
+
+<p>After processing the obfuscated script with the babel plugin above, we get the following result:</p>
+<h4 id="Post-Deobfuscation-Result"><a href="#Post-Deobfuscation-Result" class="headerlink" title="Post-Deobfuscation Result"></a>Post-Deobfuscation Result</h4><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs javascript">+~!+!+!~+!!<span class="hljs-number">0</span>;<br></code></pre></td></tr></table></figure>
+
+<p>That’s a lot of simplification! We could now just deduce from manual inspection that the result would be equal to <code>-1</code>. But, we’d prefer our debugger to do all the work for us. Time to analyze our code and make some changes!</p>
+<h2 id="Analysis-Methodology"><a href="#Analysis-Methodology" class="headerlink" title="Analysis Methodology"></a>Analysis Methodology</h2><p>As always, we start our analysis using <a target="_blank" rel="noopener" href="https://astexplorer.net/">AST Explorer</a>.</p>
+<p>But first, let’s make a small simplification to the analysis process. Normally, we would paste the entire obfuscated script into AST explorer. However, we already know that our original constant folding visitor can do the majority of the cases for us. So, instead of analyzing the entire original script, we can shift our focus to what our deobfuscator <em>is not doing</em>. Therefore, we’ll only analyze the resulting code of our deobfuscator to figure out what we need to add.</p>
+<p>That means we only need to analyze this one-liner: <code>+~!+!+!~+!!0;</code>. Let’s paste that into AST Explorer and see what we get.</p>
+<p><img src="/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck2.PNG" srcset="/img/loading.gif" lazyload alt="View of the obfuscated code in AST Explorer"></p>
+<p>Even though this code contains <code>+</code> operators, there are no <code>BinaryExpression</code>s present. In this case, the <code>+</code>‘s are <a target="_blank" rel="noopener" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Unary_plus">Unary Operators</a>. In fact, this code only contains nodes of type <code>UnaryExpression</code>, which then act on a single <code>NumericLiteral</code> node.</p>
+<p>So, you may have realized by now why our deobfuscator doesn’t fully work. Our deobfuscator is only accounting for <code>BinaryExpressions</code>, and we have yet to add functionality to handle <code>UnaryExpressions</code>! So, let’s do that.</p>
+<h2 id="Writing-the-Deobfuscator-Logic"><a href="#Writing-the-Deobfuscator-Logic" class="headerlink" title="Writing the Deobfuscator Logic"></a>Writing the Deobfuscator Logic</h2><p>Thankfully for us, the <code>path.evaluate()</code> method can also be used for UnaryExpressions. So, we should also create a visitor for nodes of type <code>UnaryExpression</code>, and run the same transformation for them.</p>
+<p>If you’re still new to Babel, your first instinct might be to create two separate visitors: one for <code>UnaryExpression</code>s, and one for <code>BinaryExpression</code>s; then copy-paste the original plugin code inside of both. However, there is a much cleaner way of accomplishing the same thing. Babel allows you to run the same function for multiple visitor nodes by separating them with a <code>|</code> in the method name as a string. In our case, that would look like: <code>&quot;BinaryExpression|UnaryExpression&quot;(path)</code>.</p>
+<p>In essence, all we need to do is change <code>BinaryExpression(path)</code> to <code>&quot;BinaryExpression|UnaryExpression&quot;(path)</code> in our deobfuscator. This will <em>mostly</em> work, but I want to explain some interesting findings regarding evaluation of UnaryExpressions.</p>
+<h3 id="The-Problem"><a href="#The-Problem" class="headerlink" title="The Problem"></a>The Problem</h3><h4 id="Problems-with-UnaryExpression-Evaluation"><a href="#Problems-with-UnaryExpression-Evaluation" class="headerlink" title="Problems with UnaryExpression Evaluation"></a>Problems with UnaryExpression Evaluation</h4><p><code>path.evaluate()</code>, <code>UnaryExpression</code>s, and <code>t.valueToNode()</code> don’t work very well with each other due to their source code implementation. I’ll explain with a short example:</p>
+<p>Let’s say we have the following code:</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs js">~<span class="hljs-literal">false</span>;<br></code></pre></td></tr></table></figure>
+
+<p>and we want to simplify it to:</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs js">-<span class="hljs-number">1</span>;<br></code></pre></td></tr></table></figure>
+
+<p>If we use the original code from the constant folding article and only replace the method name, we’ll have this visitor:</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs js"><span class="hljs-comment">// ...</span><br><span class="hljs-keyword">const</span> foldConstantsVisitor = &#123;<br>  <span class="hljs-string">&quot;BinaryExpression|UnaryExpression&quot;</span>(path) &#123;<br>    <span class="hljs-keyword">let</span> &#123; confident, value &#125; = path.evaluate(); <span class="hljs-comment">// Evaluate the binary expression</span><br>    <span class="hljs-keyword">if</span> (!confident) <span class="hljs-keyword">return</span>; <span class="hljs-comment">// Skip if not confident</span><br>    <span class="hljs-keyword">let</span> actualVal = t.<span class="hljs-title function_">valueToNode</span>(value); <span class="hljs-comment">// Create a new node, infer the type</span><br>    <span class="hljs-keyword">if</span> (!t.<span class="hljs-title function_">isLiteral</span>(actualVal)) <span class="hljs-keyword">return</span>; <span class="hljs-comment">// Skip if not a Literal type (e.g. StringLiteral, NumericLiteral, Boolean Literal etc.)</span><br>    path.<span class="hljs-title function_">replaceWith</span>(actualVal); <span class="hljs-comment">// Replace the BinaryExpression with the simplified value</span><br>  &#125;,<br>&#125;;<br><br><span class="hljs-comment">// Execute the visitor</span><br><span class="hljs-title function_">traverse</span>(ast, foldConstantsVisitor);<br><br><span class="hljs-comment">// ...</span><br></code></pre></td></tr></table></figure>
+
+<p>But, if we run this, we’ll see that it returns:</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs js">~<span class="hljs-literal">false</span>;<br></code></pre></td></tr></table></figure>
+
+<p>which isn’t simplified at all.</p>
+<p>Here’s why:</p>
+<ol>
+<li><p><code>t.valueToNode()</code>‘s implementation. Running <code>path.evaluate()</code> correctly returns an integer value, <code>-1</code>. However, t.valueToNode(-1) doesn’t create a <code>NumericLiteral</code> node with a value of <code>-1</code> as we would expect. Instead, it creates another <code>UnaryExpression</code> node, with properties <code>operator: -</code> and <code>argument: 1</code>. As such, <code>if (!t.isLiteral(actualVal)) return</code> results in an early return before replacement.</p>
+</li>
+<li><p>Even if we delete <code>if (!t.isLiteral(actualVal)) return</code> from our code, there’s still an issue. Since <code>t.valueToNode(-1)</code> constructs a <code>UnaryExpression</code>, we are checking UnaryExpressions, and we have no additional checks, our program will result in an infinite recursive loop, crashing our program once the maximum call stack size is exceeded:</p>
+</li>
+</ol>
+<p><img src="/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck3.png" srcset="/img/loading.gif" lazyload alt="Maximum Call Stack Size Exceeded Error"></p>
+<ol start="3">
+<li>Though not directly applicable to this code snippet, another problem is worth mentioning. Unary expressions can also have a <code>void</code> operator. Based on Babel’s source code, calling <code>path.evaluate()</code> on any <code>UnaryExpression</code> with a <code>void</code> operator will simplify it to <code>undefined</code>, <em>regardless of what the argument is</em>.</li>
+</ol>
+<p><img src="/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck4.png" srcset="/img/loading.gif" lazyload alt="Babel Source Code Snippet: \node_modules@babel\traverse\lib\path\evaluation.js"></p>
+<p>This can be problematic in some cases, such as this example:</p>
+<ul>
+<li>Snippet 1:</li>
+</ul>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs js"><span class="hljs-keyword">var</span> a = <span class="hljs-number">1</span>;<br><span class="hljs-keyword">function</span> <span class="hljs-title function_">set</span>(<span class="hljs-params"></span>) &#123;<br>  a = <span class="hljs-number">2</span>;<br>&#125;<br><span class="hljs-keyword">void</span> <span class="hljs-title function_">set</span>();<br><span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(a); <span class="hljs-comment">// =&gt; 2</span><br></code></pre></td></tr></table></figure>
+
+<p>Calling <code>path.evaluate()</code> to simplify the <code>void set()</code> <code>UnaryExpression</code> yields this:</p>
+<ul>
+<li>Snippet 2:</li>
+</ul>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs js"><span class="hljs-keyword">var</span> a = <span class="hljs-number">1</span>;<br><span class="hljs-keyword">function</span> <span class="hljs-title function_">set</span>(<span class="hljs-params"></span>) &#123;<br>  a = <span class="hljs-number">2</span>;<br>&#125;<br><span class="hljs-literal">undefined</span>;<br><br><span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(a); <span class="hljs-comment">// =&gt; 1</span><br></code></pre></td></tr></table></figure>
+
+<p>The two pieces of code above are clearly not the same, as you can verify with their output.</p>
+<h3 id="The-Fix"><a href="#The-Fix" class="headerlink" title="The Fix"></a>The Fix</h3><p>Thankfully, these three conditions are simple to account for. We can solve each of them as follows:</p>
+<ol>
+<li>Delete the <code>if (!t.isLiteral(actualVal)) return</code> check.</li>
+<li>Add a check at the beginning of the visitor method to skip the node if it is a <code>UnaryExpression</code> with a <code>-</code> operator.</li>
+<li>Add a check at the beginning of the visitor method to skip the node if it is a <code>UnaryExpression</code> with a <code>void</code> operator.</li>
+</ol>
+<p>I’ve also neglected to mention this before, but when using <code>path.evaluate()</code>, it’s best practice to also skip the replacement of nodes when it evaluates <code>Infinity</code> or <code>-Infinity</code> by returning early. This is because <code>t.valueToNode(Infinity)</code> creates a node of type BinaryExpression, which looks like <code>1 / 0</code>. Similarly, <code>t.valueToNode(-Infinity)</code> creates a node of type UnaryExpression, which looks like <code>-(1/0)</code>. In both of these cases, it can cause an infinite loop since our visitor will also visit the created nodes, which will crash our deobfuscator.</p>
+<h3 id="Summarizing-the-Logic"><a href="#Summarizing-the-Logic" class="headerlink" title="Summarizing the Logic"></a>Summarizing the Logic</h3><p>So putting that all together, we have the following logic for our deobfuscator:</p>
+<ol>
+<li><p>Traverse the ast for nodes of type <code>BinaryExpression</code> and <code>UnaryExpression</code>.</p>
+</li>
+<li><p>Upon encountering one:</p>
+</li>
+<li><p>Check if it is of type <code>UnaryExpression</code> and uses a <code>void</code> or <code>-</code> operator. If the condition is true, skip the node by returning.</p>
+</li>
+<li><p>Evaluate the node using <code>path.evaluate()</code>.</p>
+</li>
+<li><p>If <code>path.evaluate()</code> returns <code>&#123;confident:false&#125;</code>, or <code>&#123;value:Infinity&#125;</code> or <code>&#123;value:-Infinity&#125;</code>, skip the node by returning.</p>
+</li>
+<li><p>Construct a new node from the returned <code>value</code>, and replace the original node with it.</p>
+</li>
+</ol>
+<p>The Babel implementation looks like this:</p>
+<h2 id="Babel-Deobfuscation-Script"><a href="#Babel-Deobfuscation-Script" class="headerlink" title="Babel Deobfuscation Script"></a>Babel Deobfuscation Script</h2><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><code class="hljs js"><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Deobfuscator.js</span><br><span class="hljs-comment"> * The babel script used to deobfuscate the target file</span><br><span class="hljs-comment"> *</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">const</span> parser = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/parser&quot;</span>);<br><span class="hljs-keyword">const</span> traverse = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/traverse&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> t = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/types&quot;</span>);<br><span class="hljs-keyword">const</span> generate = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/generator&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> beautify = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;js-beautify&quot;</span>);<br><span class="hljs-keyword">const</span> &#123; readFileSync, writeFile &#125; = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;fs&quot;</span>);<br><br><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Main function to deobfuscate the code.</span><br><span class="hljs-comment"> * <span class="hljs-doctag">@param</span> source The source code of the file to be deobfuscated</span><br><span class="hljs-comment"> *</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">function</span> <span class="hljs-title function_">deobfuscate</span>(<span class="hljs-params">source</span>) &#123;<br>  <span class="hljs-comment">//Parse AST of Source Code</span><br>  <span class="hljs-keyword">const</span> ast = parser.<span class="hljs-title function_">parse</span>(source);<br><br>  <span class="hljs-comment">// Visitor for constant folding</span><br>  <span class="hljs-keyword">const</span> constantFold = &#123;<br>    <span class="hljs-string">&quot;BinaryExpression|UnaryExpression&quot;</span>(path) &#123;<br>      <span class="hljs-keyword">const</span> &#123; node &#125; = path;<br>      <span class="hljs-keyword">if</span> (<br>        t.<span class="hljs-title function_">isUnaryExpression</span>(node) &amp;&amp;<br>        (node.<span class="hljs-property">operator</span> == <span class="hljs-string">&quot;-&quot;</span> || node.<span class="hljs-property">operator</span> == <span class="hljs-string">&quot;void&quot;</span>)<br>      )<br>        <span class="hljs-keyword">return</span>;<br>      <span class="hljs-keyword">let</span> &#123; confident, value &#125; = path.evaluate(); <span class="hljs-comment">// Evaluate the binary expression</span><br>      <span class="hljs-keyword">if</span> (!confident || value == <span class="hljs-title class_">Infinity</span> || value == -<span class="hljs-title class_">Infinity</span>) <span class="hljs-keyword">return</span>; <span class="hljs-comment">// Skip if not confident</span><br><br>      <span class="hljs-keyword">let</span> actualVal = t.<span class="hljs-title function_">valueToNode</span>(value); <span class="hljs-comment">// Create a new node, infer the type</span><br>      path.<span class="hljs-title function_">replaceWith</span>(actualVal); <span class="hljs-comment">// Replace the BinaryExpression with the simplified value</span><br>    &#125;,<br>  &#125;;<br><br>  <span class="hljs-comment">//Execute the visitor</span><br>  <span class="hljs-title function_">traverse</span>(ast, constantFold);<br>  <span class="hljs-comment">// Code Beautification</span><br>  <span class="hljs-keyword">let</span> deobfCode = <span class="hljs-title function_">generate</span>(ast, &#123; <span class="hljs-attr">comments</span>: <span class="hljs-literal">false</span> &#125;).<span class="hljs-property">code</span>;<br>  deobfCode = <span class="hljs-title function_">beautify</span>(deobfCode, &#123;<br>    <span class="hljs-attr">indent_size</span>: <span class="hljs-number">2</span>,<br>    <span class="hljs-attr">space_in_empty_paren</span>: <span class="hljs-literal">true</span>,<br>  &#125;);<br>  <span class="hljs-comment">// Output the deobfuscated result</span><br>  <span class="hljs-title function_">writeCodeToFile</span>(deobfCode);<br>&#125;<br><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Writes the deobfuscated code to output.js</span><br><span class="hljs-comment"> * <span class="hljs-doctag">@param</span> code The deobfuscated code</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">function</span> <span class="hljs-title function_">writeCodeToFile</span>(<span class="hljs-params">code</span>) &#123;<br>  <span class="hljs-keyword">let</span> outputPath = <span class="hljs-string">&quot;output.js&quot;</span>;<br>  <span class="hljs-title function_">writeFile</span>(outputPath, code, <span class="hljs-function">(<span class="hljs-params">err</span>) =&gt;</span> &#123;<br>    <span class="hljs-keyword">if</span> (err) &#123;<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">&quot;Error writing file&quot;</span>, err);<br>    &#125; <span class="hljs-keyword">else</span> &#123;<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Wrote file to <span class="hljs-subst">$&#123;outputPath&#125;</span>`</span>);<br>    &#125;<br>  &#125;);<br>&#125;<br><br><span class="hljs-title function_">deobfuscate</span>(<span class="hljs-title function_">readFileSync</span>(<span class="hljs-string">&quot;./jsFuckObfuscated.js&quot;</span>, <span class="hljs-string">&quot;utf8&quot;</span>));<br></code></pre></td></tr></table></figure>
+
+<p>After processing the obfuscated script with the babel plugin above, we get the following result:</p>
+<h2 id="Post-Deobfuscation-Result-1"><a href="#Post-Deobfuscation-Result-1" class="headerlink" title="Post-Deobfuscation Result"></a>Post-Deobfuscation Result</h2><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs js">-<span class="hljs-number">1</span>;<br></code></pre></td></tr></table></figure>
+
+<p>And we finally arrive at the correct constant value!</p>
+<h1 id="Example-2-A-More-Peculiar-Case"><a href="#Example-2-A-More-Peculiar-Case" class="headerlink" title="Example 2: A More Peculiar Case"></a>Example 2: A More Peculiar Case</h1><p>That first example was just a warm-up, and not what I really wanted to focus on (hence the title of the article). This next example isn’t too much more difficult, but it <em>will</em> require you to think a bit outside of the box.</p>
+<p>Here’s our obfuscated sample:</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs js"><span class="hljs-keyword">let</span> obbedVar = +([[[[[[]], , ,]]]] != <span class="hljs-number">0</span>);<br></code></pre></td></tr></table></figure>
+
+<p>Let’s try running this in a javascript console to see what it simplifies to:</p>
+<p><img src="/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck5.png" srcset="/img/loading.gif" lazyload alt="Result of evaluating the code in the console"></p>
+<p>So, it simplifies to a numeric literal, <code>1</code>!</p>
+<p>The structure of the obfuscated sample looks similar to that of the first example. We know that it leads to a constant, so let’s first try running this sample through the improved deobfuscator we created above.</p>
+<p>If you do that, you’ll see that it yields:</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs js"><span class="hljs-keyword">let</span> obbedVar = +([[[[[[]], , ,]]]] != <span class="hljs-number">0</span>);<br></code></pre></td></tr></table></figure>
+
+<p>Which is no different! So, why is our code breaking?</p>
+<h2 id="Analysis-Methodology-1"><a href="#Analysis-Methodology-1" class="headerlink" title="Analysis Methodology"></a>Analysis Methodology</h2><h3 id="The-Problem-1"><a href="#The-Problem-1" class="headerlink" title="The Problem"></a>The Problem</h3><p>Intuitively, you can probably guess what’s causing the issue. The only real difference is that there seems to be an array containing blank elements: <code>[, , ,]</code>.</p>
+<p>But why would that even matter? Let’s paste our code into <a target="_blank" rel="noopener" href="https://astexplorer.net/">AST Explorer</a> to try and figure out what’s going on.</p>
+<p><img src="/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck6.PNG" srcset="/img/loading.gif" lazyload alt="View of the obfuscated code in AST Explorer"></p>
+<p>We know that everything else seems normal except for the array containing empty elements, so let’s focus on that. We can highlight the empty elements in the code using our cursor to automatically show their respective nodes on the right-hand side.</p>
+<p><img src="/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck7.png" srcset="/img/loading.gif" lazyload alt="A closer look at the nodes of interest"></p>
+<p>You’ll notice something strange! There are elements of the array that are <code>null</code>. Keep in mind, in Babel, the node types <code>Literal</code> and <code>Identifier</code> are used to represent <code>null</code> and <code>undefined</code> respectively (as shown below):</p>
+<p><img src="/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck8.png" srcset="/img/loading.gif" lazyload alt="Handling of null, undefined, and empty elements"></p>
+<p>But, in this case, we don’t even have a node! It’s just simply <code>null</code>.</p>
+<p>Let’s look inside of Babel’s source code implementation for <code>path.evaluate()</code> to see why the script breaks when encountering this. You can view the original script from the <a target="_blank" rel="noopener" href="https://github.com/babel/babel/blob/main/packages/babel-traverse/src/path/evaluation.ts">official GitHub repository</a>, or by navigating to <code>\node_modules\@babel\traverse\lib\path\evaluation.js</code>.</p>
+<p><img src="/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck9.PNG" srcset="/img/loading.gif" lazyload alt="snippet from \node_modules@babel\traverse\lib\path\evaluation.js"></p>
+<p>The above code snippet can be found in the <code>_evaluate()</code> function, which runs as a helper for the main <code>evaluate()</code> function.</p>
+<p>We can see that when <code>path.evaluate()</code> is called on an array expression, it tries to recursively evaluate all of its inner elements.However, if the evaluation fails&#x2F;returns <code>confident: false</code> for any element in the array, the entire evaluation short circuits.</p>
+<p>But, Babel actually has an implementation to handle occurrences of <code>undefined</code> and <code>null</code> in source code:</p>
+<p><img src="/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck10.png" srcset="/img/loading.gif" lazyload alt="Handling of undefined"></p>
+<p><img src="/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck11.PNG" srcset="/img/loading.gif" lazyload alt="Handling of null"></p>
+<p>However, that’s only after they’re converted to either a node of type <code>NullLiteral</code> or <code>Identifier</code>. In evaluation.js, there isn’t any handling for when a <code>null</code> value is encountered, so the method will return <code>confident: false</code> whenever an empty array element is encountered.</p>
+<h3 id="The-Fix-1"><a href="#The-Fix-1" class="headerlink" title="The Fix"></a>The Fix</h3><p>We shouldn’t give up though, since we <em>KNOW</em> that it’s possible to evaluate the code to a constant because we tested it in a console before. Let’s use a console again, this time to see what an empty element in an array is actually equal to:</p>
+<p><img src="/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/jsfuck12.PNG" srcset="/img/loading.gif" lazyload alt="Inspecting the value of an empty element"></p>
+<p>We can see that trying to access an empty element in an array returns <code>undefined</code>! Okay, but how does that help us?</p>
+<p>Recall that Babel has an implementation for handling <code>undefined</code> in evaluation.js. However, the reason it didn’t work was because Babel failed to convert the empty array elements to a node. To fix our problem, all we have to do is replace any empty elements in arrays with <code>undefined</code> beforehand, so Babel can recognize them as the <code>undefined</code> keyword and evaluate them properly!</p>
+<h2 id="Writing-the-Deobfuscator-Logic-1"><a href="#Writing-the-Deobfuscator-Logic-1" class="headerlink" title="Writing the Deobfuscator Logic"></a>Writing the Deobfuscator Logic</h2><p>The deobfuscator logic is as follows:</p>
+<ol>
+<li>Traverse the ast for <code>ArrayExpression</code>s. When one is encountered:</li>
+<li>Check if the element is falsy. A node representation of <code>undefined</code> or <code>null</code> still will not be falsy, since a node is an object.</li>
+<li>If it’s falsy, replace it with the node representation of <code>undefined</code>.</li>
+<li>Run our constant folding plugin from Example 1.<br>The babel deobfuscation code is shown below:</li>
+</ol>
+<h2 id="Babel-Deobfuscation-Script-1"><a href="#Babel-Deobfuscation-Script-1" class="headerlink" title="Babel Deobfuscation Script"></a>Babel Deobfuscation Script</h2><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br></pre></td><td class="code"><pre><code class="hljs js"><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Deobfuscator.js</span><br><span class="hljs-comment"> * The babel script used to deobfuscate the target file</span><br><span class="hljs-comment"> *</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">const</span> parser = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/parser&quot;</span>);<br><span class="hljs-keyword">const</span> traverse = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/traverse&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> t = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/types&quot;</span>);<br><span class="hljs-keyword">const</span> generate = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/generator&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> beautify = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;js-beautify&quot;</span>);<br><span class="hljs-keyword">const</span> &#123; readFileSync, writeFile &#125; = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;fs&quot;</span>);<br><br><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Main function to deobfuscate the code.</span><br><span class="hljs-comment"> * <span class="hljs-doctag">@param</span> source The source code of the file to be deobfuscated</span><br><span class="hljs-comment"> *</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">function</span> <span class="hljs-title function_">deobfuscate</span>(<span class="hljs-params">source</span>) &#123;<br>  <span class="hljs-comment">//Parse AST of Source Code</span><br>  <span class="hljs-keyword">const</span> ast = parser.<span class="hljs-title function_">parse</span>(source);<br><br>  <span class="hljs-keyword">const</span> fixArrays = &#123;<br>    <span class="hljs-title class_">ArrayExpression</span>(path) &#123;<br>      <span class="hljs-keyword">for</span> (elem <span class="hljs-keyword">of</span> path.<span class="hljs-title function_">get</span>(<span class="hljs-string">&quot;elements&quot;</span>)) &#123;<br>        <span class="hljs-keyword">if</span> (!elem.<span class="hljs-property">node</span>) &#123;<br>          elem.<span class="hljs-title function_">replaceWith</span>(t.<span class="hljs-title function_">valueToNode</span>(<span class="hljs-literal">undefined</span>));<br>        &#125;<br>      &#125;<br>    &#125;,<br>  &#125;;<br><br>  <span class="hljs-title function_">traverse</span>(ast, fixArrays);<br><br>  <span class="hljs-comment">// Visitor for constant folding</span><br>  <span class="hljs-keyword">const</span> constantFold = &#123;<br>    <span class="hljs-string">&quot;BinaryExpression|UnaryExpression&quot;</span>(path) &#123;<br>      <span class="hljs-keyword">const</span> &#123; node &#125; = path;<br>      <span class="hljs-keyword">if</span> (<br>        t.<span class="hljs-title function_">isUnaryExpression</span>(node) &amp;&amp;<br>        (node.<span class="hljs-property">operator</span> == <span class="hljs-string">&quot;-&quot;</span> || node.<span class="hljs-property">operator</span> == <span class="hljs-string">&quot;void&quot;</span>)<br>      )<br>        <span class="hljs-keyword">return</span>;<br>      <span class="hljs-keyword">let</span> &#123; confident, value &#125; = path.evaluate(); <span class="hljs-comment">// Evaluate the binary expression</span><br>      <span class="hljs-keyword">if</span> (!confident || value == <span class="hljs-title class_">Infinity</span> || value == -<span class="hljs-title class_">Infinity</span>) <span class="hljs-keyword">return</span>; <span class="hljs-comment">// Skip if not confident</span><br><br>      path.<span class="hljs-title function_">replaceWith</span>(t.<span class="hljs-title function_">valueToNode</span>(value)); <span class="hljs-comment">// Replace the BinaryExpression with a new node of inferred type</span><br>    &#125;,<br>  &#125;;<br><br>  <span class="hljs-comment">//Execute the visitor</span><br>  <span class="hljs-title function_">traverse</span>(ast, constantFold);<br>  <span class="hljs-comment">// Code Beautification</span><br>  <span class="hljs-keyword">let</span> deobfCode = <span class="hljs-title function_">generate</span>(ast, &#123; <span class="hljs-attr">comments</span>: <span class="hljs-literal">false</span> &#125;).<span class="hljs-property">code</span>;<br>  deobfCode = <span class="hljs-title function_">beautify</span>(deobfCode, &#123;<br>    <span class="hljs-attr">indent_size</span>: <span class="hljs-number">2</span>,<br>    <span class="hljs-attr">space_in_empty_paren</span>: <span class="hljs-literal">true</span>,<br>  &#125;);<br>  <span class="hljs-comment">// Output the deobfuscated result</span><br>  <span class="hljs-title function_">writeCodeToFile</span>(deobfCode);<br>&#125;<br><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Writes the deobfuscated code to output.js</span><br><span class="hljs-comment"> * <span class="hljs-doctag">@param</span> code The deobfuscated code</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">function</span> <span class="hljs-title function_">writeCodeToFile</span>(<span class="hljs-params">code</span>) &#123;<br>  <span class="hljs-keyword">let</span> outputPath = <span class="hljs-string">&quot;output.js&quot;</span>;<br>  <span class="hljs-title function_">writeFile</span>(outputPath, code, <span class="hljs-function">(<span class="hljs-params">err</span>) =&gt;</span> &#123;<br>    <span class="hljs-keyword">if</span> (err) &#123;<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">&quot;Error writing file&quot;</span>, err);<br>    &#125; <span class="hljs-keyword">else</span> &#123;<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Wrote file to <span class="hljs-subst">$&#123;outputPath&#125;</span>`</span>);<br>    &#125;<br>  &#125;);<br>&#125;<br><br><span class="hljs-title function_">deobfuscate</span>(<span class="hljs-title function_">readFileSync</span>(<span class="hljs-string">&quot;./jsFuckObfuscated.js&quot;</span>, <span class="hljs-string">&quot;utf8&quot;</span>));<br></code></pre></td></tr></table></figure>
+
+<p>After processing the obfuscated script with the babel plugin above, we get the following result:</p>
+<h2 id="Post-Deobfuscation-Result-2"><a href="#Post-Deobfuscation-Result-2" class="headerlink" title="Post-Deobfuscation Result"></a>Post-Deobfuscation Result</h2><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs js"><span class="hljs-keyword">let</span> obbedVar = <span class="hljs-number">1</span>;<br></code></pre></td></tr></table></figure>
+
+<p>And we’ve successfully simplified it down to a constant!</p>
+<h1 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h1><p>I will admit that this article may have been a bit longer than it needed to be. However, I felt that for my beginner-level readers, it would be more helpful to explain the entire reverse-engineering thought process; including where and why some things go wrong, and the logical process of constructing a solution.</p>
+<p>Okay, that’s all I have to cover for today. If you’re interested, you can find the source code for all the examples in <a target="_blank" rel="noopener" href="https://github.com/SteakEnthusiast/Supplementary-AST-Based-Deobfuscation-Materials">this repository</a>.</p>
+<p>I hope this article helped you learn something new. Thanks for reading, and happy reversing! 😄</p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Deobfuscation/" class="category-chain-item">Deobfuscation</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/Javascript/">#Javascript</a>
+      
+        <a href="/tags/Deobfuscation/">#Deobfuscation</a>
+      
+        <a href="/tags/Babel/">#Babel</a>
+      
+        <a href="/tags/Reverse-Engineering/">#Reverse Engineering</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Deobfuscating Javascript via AST: A Peculiar JSFuck-esque Case</div>
+      <div>http://steakenthusiast.github.io/2022/06/14/Deobfuscating-Javascript-via-AST-Deobfuscating-a-Peculiar-JSFuck-style-Case/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>Author</div>
+          <div>William Khem Marquez</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>Posted on</div>
+          <div>June 14, 2022</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>Licensed under</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - Attribution">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2023/10/11/CVE-2023-45133-Finding-an-Arbitrary-Code-Execution-Vulnerability-In-Babel/" title="CVE-2023-45133: Finding an Arbitrary Code Execution Vulnerability In Babel.js">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">CVE-2023-45133: Finding an Arbitrary Code Execution Vulnerability In Babel.js</span>
+                        <span class="visible-mobile">Previous</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2022/06/04/Deobfuscating-Javascript-via-AST-Removing-Dead-or-Unreachable-Code/" title="Deobfuscating Javascript via AST: Removing Dead or Unreachable Code">
+                        <span class="hidden-mobile">Deobfuscating Javascript via AST: Removing Dead or Unreachable Code</span>
+                        <span class="visible-mobile">Next</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>Table of Contents</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">Search</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">Keyword</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.0/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.10/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">Blog works best with JavaScript enabled</div>
+  </noscript>
+</body>
+</html>

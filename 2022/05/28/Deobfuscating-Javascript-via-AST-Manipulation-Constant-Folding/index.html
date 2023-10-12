@@ -1,0 +1,1090 @@
+
+
+<!DOCTYPE html>
+<html lang="en" data-default-color-scheme=dark>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/../images/ico.jpg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="William Khem Marquez">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="PrefaceThis article assumes a preliminary understanding of Abstract Syntax Tree structure and BabelJS. Click Here to read my introductory article on the usage of Babel. What is Constant Folding?Consta">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Deobfuscating Javascript via AST: Constant Folding&#x2F;Binary Expression Simplification">
+<meta property="og:url" content="http://steakenthusiast.github.io/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/index.html">
+<meta property="og:site_name" content="ReverseJS">
+<meta property="og:description" content="PrefaceThis article assumes a preliminary understanding of Abstract Syntax Tree structure and BabelJS. Click Here to read my introductory article on the usage of Babel. What is Constant Folding?Consta">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/constantFolding1.PNG">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/constantFolding2.PNG">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/constantFolding3.PNG">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/constantFolding4.png">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/constantFolding5.png">
+<meta property="article:published_time" content="2022-05-29T02:56:01.000Z">
+<meta property="article:modified_time" content="2023-10-11T01:24:11.699Z">
+<meta property="article:author" content="William Khem Marquez">
+<meta property="article:tag" content="Javascript">
+<meta property="article:tag" content="Deobfuscation">
+<meta property="article:tag" content="Babel">
+<meta property="article:tag" content="Reverse Engineering">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://steakenthusiast.github.io/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/constantFolding1.PNG">
+  
+  
+  
+  <title>Deobfuscating Javascript via AST: Constant Folding/Binary Expression Simplification-ReverseJS</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"steakenthusiast.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":40,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>ReverseJS</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>Home</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>Archives</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>Categories</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>Tags</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                <span>About</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" target="_blank" rel="noopener" href="https://github.com/SteakEnthusiast">
+                <i class="iconfont icon-github-fill"></i>
+                <span></span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" target="_blank" rel="noopener" href="https://www.linkedin.com/in/william-khem-marquez-3232b9222/">
+                <i class="iconfont icon-linkedin-fill"></i>
+                <span></span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/../images/background.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Deobfuscating Javascript via AST: Constant Folding/Binary Expression Simplification"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2022-05-28 22:56" pubdate>
+          May 28, 2022 pm
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Deobfuscating Javascript via AST: Constant Folding/Binary Expression Simplification</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h1 id="Preface"><a href="#Preface" class="headerlink" title="Preface"></a>Preface</h1><p>This article assumes a preliminary understanding of Abstract Syntax Tree structure and <a target="_blank" rel="noopener" href="https://babeljs.io/">BabelJS</a>. <a href="http://steakenthusiast.github.io/2022/05/21/Deobfuscating-Javascript-via-AST-An-Introduction-to-Babel/">Click Here</a> to read my introductory article on the usage of Babel.</p>
+<h1 id="What-is-Constant-Folding"><a href="#What-is-Constant-Folding" class="headerlink" title="What is Constant Folding?"></a>What is Constant Folding?</h1><p><strong>Constant Folding</strong>: “An optimization technique that eliminates expressions that calculate a value that can already be determined before code execution.” (<a target="_blank" rel="noopener" href="https://cran.r-project.org/web/packages/rco/vignettes/opt-constant-folding.html">Source</a>)</p>
+<p>To better explain constant folding, it’s perhaps more useful to first introduce the obfuscation technique that constant folding fights against. Take the following code for example:</p>
+<h1 id="Examples"><a href="#Examples" class="headerlink" title="Examples"></a>Examples</h1><h2 id="Example-1-The-Basic-Case"><a href="#Example-1-The-Basic-Case" class="headerlink" title="Example #1: The Basic Case"></a>Example #1: The Basic Case</h2><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * &quot;Input.js&quot;</span><br><span class="hljs-comment"> * Original, unobfuscated code.</span><br><span class="hljs-comment"> *</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">let</span> foo = <span class="hljs-number">27</span>;<br><span class="hljs-keyword">let</span> bar = <span class="hljs-number">4</span>;<br><span class="hljs-keyword">let</span> baz = <span class="hljs-string">&quot;I am a string literal, totally whole!&quot;</span>;<br></code></pre></td></tr></table></figure>
+
+<p>An obfuscator may split each constant value into multiple <em>binary expressions</em>, which could look something like this after obfuscation:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * splitConstantsObfuscated.js&quot;</span><br><span class="hljs-comment"> * This is the resulting code after obfuscation.</span><br><span class="hljs-comment"> *</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">let</span> foo = <span class="hljs-number">12373561</span> ^ (<span class="hljs-number">12373561</span> * <span class="hljs-number">13</span> + <span class="hljs-number">3</span> * <span class="hljs-number">7</span>) ^ <span class="hljs-number">153794264</span>;<br><span class="hljs-keyword">let</span> bar =<br>  (<span class="hljs-number">535</span> + <span class="hljs-literal">false</span>) ^<br>  (<span class="hljs-number">2318</span> + <span class="hljs-literal">true</span> * -<span class="hljs-number">1399</span> + <span class="hljs-literal">true</span>) ^<br>  (<span class="hljs-number">1321</span> - <span class="hljs-number">1234</span> / <span class="hljs-number">2340</span> + <span class="hljs-literal">true</span> + <span class="hljs-literal">true</span> * <span class="hljs-number">50</span> + <span class="hljs-literal">false</span>) ^<br>  <span class="hljs-number">1232</span>;<br><span class="hljs-keyword">let</span> baz =<br>  <span class="hljs-string">&quot;I &quot;</span> +<br>  <span class="hljs-string">&quot;a&quot;</span> +<br>  <span class="hljs-string">&quot;m&quot;</span> +<br>  <span class="hljs-string">&quot; a&quot;</span> +<br>  <span class="hljs-string">&quot; st&quot;</span> +<br>  <span class="hljs-string">&quot;ri&quot;</span> +<br>  <span class="hljs-string">&quot;ng&quot;</span> +<br>  <span class="hljs-string">&quot; lite&quot;</span> +<br>  <span class="hljs-string">&quot;ra&quot;</span> +<br>  <span class="hljs-string">&quot;l,&quot;</span> +<br>  <span class="hljs-string">&quot; tot&quot;</span> +<br>  <span class="hljs-string">&quot;al&quot;</span> +<br>  <span class="hljs-string">&quot;l&quot;</span> +<br>  <span class="hljs-string">&quot;y&quot;</span> +<br>  <span class="hljs-string">&quot; wh&quot;</span> +<br>  <span class="hljs-string">&quot;ol&quot;</span> +<br>  <span class="hljs-string">&quot;e&quot;</span> +<br>  <span class="hljs-string">&quot;!&quot;</span>;<br></code></pre></td></tr></table></figure>
+
+<p>As you can see, the obfuscation has transformed what used to be easy to read constants; <code>27</code>, <code>4</code>, <code>&quot;I am a string literal, totally whole!&quot;</code> ; into multiple expressions with arithmetic and bitwise operators. The code is even using mathematical operators on booleans! Someone reading the code would likely need to evaluate each expression in a debugger to figure out the value of each variable. Let’s paste the second snippet in the dev tools console to check:</p>
+<p><img src="/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/constantFolding1.PNG" srcset="/img/loading.gif" lazyload alt="Checking the evaluated values in the DevTools console"></p>
+<p>We can observe that each variable in the second snippet has an equivalent ability to that of its first snippet counterpart. The way the javascript engine simplified the expressions down to a constant is the essence of <strong><em>Constant Folding</em></strong>.</p>
+<p>Now, hypothetically, you <em>could</em> just evaluate each expression in a javascript interpreter and replace it by hand manually. And sure, you could do that in just a few seconds for the snippet I provided. But that isn’t a feasible solution if there were hundreds or even thousands of lines of code in a program similar to this. Thankfully for us, Babel has an inbuilt feature that can help us automate the simplification.</p>
+<h3 id="Analysis-Methodology"><a href="#Analysis-Methodology" class="headerlink" title="Analysis Methodology"></a>Analysis Methodology</h3><p>Let’s start by pasting the obfuscated sample into <a target="_blank" rel="noopener" href="https://astexplorer.net/">AST Explorer</a></p>
+<p><img src="/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/constantFolding2.PNG" srcset="/img/loading.gif" lazyload alt="View of the obfuscated code in AST Explorer"></p>
+<p>If we click on one of the expression chunks on the right-hand side of the assignment expressions, we can take a closer look at the AST structure:</p>
+<p><img src="/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/constantFolding3.PNG" srcset="/img/loading.gif" lazyload alt="A closer look at one of the nodes of interest"></p>
+<p>We can see that in this case, the small chunk of the string is of type <em>StringLiteral</em>, and it’s contained inside a bunch of nested <em>BinaryExpression</em> nodes. If we look at any other fraction of the other expressions, we can observe two important commonalities</p>
+<ol>
+<li><p>A constant value, or <em>Literal</em> (e.g. <em>StringLiteral</em>,<em>NumericLiteral</em>, or <em>BooleanLiteral</em>)</p>
+</li>
+<li><p>The <em>Literal</em> is contained inside a single or nested BinaryExpression(s).</p>
+</li>
+</ol>
+<p>Our final goal is to evaluate all the binary expressions to reduce each right-hand side expression to a constant <em>Literal</em> value. Based on the nested nature of the <em>BinaryExpressions</em>, you might be thinking of manually writing a recursive algorithm. However, there’s a much simpler way to accomplish the same effect using Babel’s inbuilt <code>path.evaluate()</code> function. Here’s how we’re going to use it:</p>
+<ol>
+<li>Traverse through the AST to search for BinaryExpressions</li>
+<li>If a BinaryExpression is encountered, try to evaluate it using <code>path.evaluate()</code>.</li>
+<li>Check if it returns <code>confident:true</code>. If <code>confident</code> is <code>false</code>, skip the node by returning.</li>
+<li>Create a node from the value using <code>t.valueToNode(value)</code> to infer the type, and assign it to a new variable, <code>valueNode</code></li>
+<li>Check that the resulting <code>valueNode</code> is a <em>Literal</em> type. If the check returns <code>false</code> skip the node by returning.<ul>
+<li>This will cover <em>StringLiteral</em>, <em>NumericLiteral</em>, <em>BooleanLiteral</em> etc. types and skip over others that would result from invalid operations (e.g. <code>t.valueToNode(Infinity)</code> is of type <em>BinaryExpression</em>, <code>t.valueToNode(undefined)</code> is of type identifier)</li>
+</ul>
+</li>
+<li>Replace the BinaryExpression node with our newly created &#96;valueNode’.<br>The babel implementation is shown below:</li>
+</ol>
+<h3 id="Babel-Deobfuscation-Script"><a href="#Babel-Deobfuscation-Script" class="headerlink" title="Babel Deobfuscation Script"></a>Babel Deobfuscation Script</h3><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Deobfuscator.js</span><br><span class="hljs-comment"> * The babel script used to deobfuscate the target file</span><br><span class="hljs-comment"> *</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">const</span> parser = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/parser&quot;</span>);<br><span class="hljs-keyword">const</span> traverse = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/traverse&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> t = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/types&quot;</span>);<br><span class="hljs-keyword">const</span> generate = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/generator&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> beautify = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;js-beautify&quot;</span>);<br><span class="hljs-keyword">const</span> &#123; readFileSync, writeFile &#125; = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;fs&quot;</span>);<br><br><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Main function to deobfuscate the code.</span><br><span class="hljs-comment"> * <span class="hljs-doctag">@param</span> source The source code of the file to be deobfuscated</span><br><span class="hljs-comment"> *</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">function</span> <span class="hljs-title function_">deobfuscate</span>(<span class="hljs-params">source</span>) &#123;<br>  <span class="hljs-comment">//Parse AST of Source Code</span><br>  <span class="hljs-keyword">const</span> ast = parser.<span class="hljs-title function_">parse</span>(source);<br><br>  <span class="hljs-comment">// Visitor for constant folding</span><br>  <span class="hljs-keyword">const</span> foldConstantsVisitor = &#123;<br>    <span class="hljs-title class_">BinaryExpression</span>(path) &#123;<br>      <span class="hljs-keyword">let</span> &#123; confident, value &#125; = path.evaluate(); <span class="hljs-comment">// Evaluate the binary expression</span><br>      <span class="hljs-keyword">if</span> (!confident) <span class="hljs-keyword">return</span>; <span class="hljs-comment">// Skip if not confident</span><br>      <span class="hljs-keyword">let</span> actualVal = t.<span class="hljs-title function_">valueToNode</span>(value); <span class="hljs-comment">// Create a new node, infer the type</span><br>      <span class="hljs-keyword">if</span> (!t.<span class="hljs-title function_">isLiteral</span>(actualVal)) <span class="hljs-keyword">return</span>; <span class="hljs-comment">// Skip if not a Literal type (e.g. StringLiteral, NumericLiteral, Boolean Literal etc.)</span><br>      path.<span class="hljs-title function_">replaceWith</span>(actualVal); <span class="hljs-comment">// Replace the BinaryExpression with the simplified value</span><br>    &#125;,<br>  &#125;;<br><br>  <span class="hljs-comment">// Execute the visitor</span><br>  <span class="hljs-title function_">traverse</span>(ast, foldConstantsVisitor);<br><br>  <span class="hljs-comment">// Code Beautification</span><br>  <span class="hljs-keyword">let</span> deobfCode = <span class="hljs-title function_">generate</span>(ast, &#123; <span class="hljs-attr">comments</span>: <span class="hljs-literal">false</span> &#125;).<span class="hljs-property">code</span>;<br>  deobfCode = <span class="hljs-title function_">beautify</span>(deobfCode, &#123;<br>    <span class="hljs-attr">indent_size</span>: <span class="hljs-number">2</span>,<br>    <span class="hljs-attr">space_in_empty_paren</span>: <span class="hljs-literal">true</span>,<br>  &#125;);<br>  <span class="hljs-comment">// Output the deobfuscated result</span><br>  <span class="hljs-title function_">writeCodeToFile</span>(deobfCode);<br>&#125;<br><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Writes the deobfuscated code to output.js</span><br><span class="hljs-comment"> * <span class="hljs-doctag">@param</span> code The deobfuscated code</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">function</span> <span class="hljs-title function_">writeCodeToFile</span>(<span class="hljs-params">code</span>) &#123;<br>  <span class="hljs-keyword">let</span> outputPath = <span class="hljs-string">&quot;output.js&quot;</span>;<br>  <span class="hljs-title function_">writeFile</span>(outputPath, code, <span class="hljs-function">(<span class="hljs-params">err</span>) =&gt;</span> &#123;<br>    <span class="hljs-keyword">if</span> (err) &#123;<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">&quot;Error writing f ile&quot;</span>, err);<br>    &#125; <span class="hljs-keyword">else</span> &#123;<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Wrote file to <span class="hljs-subst">$&#123;outputPath&#125;</span>`</span>);<br>    &#125;<br>  &#125;);<br>&#125;<br><br><span class="hljs-title function_">deobfuscate</span>(<span class="hljs-title function_">readFileSync</span>(<span class="hljs-string">&quot;./splitConstantsObfuscated.js&quot;</span>, <span class="hljs-string">&quot;utf8&quot;</span>));<br></code></pre></td></tr></table></figure>
+
+<p>After processing the obfuscated script with the babel plugin above, we get the following result:</p>
+<h3 id="Post-Deobfuscation-Result"><a href="#Post-Deobfuscation-Result" class="headerlink" title="Post-Deobfuscation Result"></a>Post-Deobfuscation Result</h3><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-keyword">let</span> foo = <span class="hljs-number">27</span>;<br><span class="hljs-keyword">let</span> bar = <span class="hljs-number">4</span>;<br><span class="hljs-keyword">let</span> baz = <span class="hljs-string">&quot;I am a string literal, totally whole!&quot;</span>;<br></code></pre></td></tr></table></figure>
+
+<p>And the original code is completely restored!</p>
+<h2 id="Example-2-A-Confident-Complication"><a href="#Example-2-A-Confident-Complication" class="headerlink" title="Example #2: A Confident Complication"></a>Example #2: A Confident Complication</h2><p>If you’ve read my article on <a href="http://steakenthusiast.github.io/2022/05/22/Deobfuscating-Javascript-via-AST-Manipulation-Various-String-Concealing-Techniques/"><em>String Concealing</em></a>, specifically the section on <a href="http://steakenthusiast.github.io/2022/05/22/Deobfuscating-Javascript-via-AST-Manipulation-Various-String-Concealing-Techniques/#Example-3-String-Concatenation"><em>String Concatenation</em></a>, you may know that you can encounter a problem using the babel script above.</p>
+<p>Let’s say you have a code snippet like this:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Snippet 1</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">class</span> <span class="hljs-title class_">Person</span> &#123;<br>  <span class="hljs-title function_">constructor</span>(<span class="hljs-params">name, school, emoji</span>) &#123;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">name</span> = name;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">school</span> = school;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">favAnimal</span> = emoji;<br>  &#125;<br><br>  <span class="hljs-title function_">sayHello</span>(<span class="hljs-params"></span>) &#123;<br>    <span class="hljs-keyword">let</span> helloStatement =<br>      <span class="hljs-string">&quot;Hello, my name is &quot;</span> +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">name</span> +<br>      <span class="hljs-string">&quot;. I g&quot;</span> +<br>      <span class="hljs-string">&quot;o t&quot;</span> +<br>      <span class="hljs-string">&quot;o &quot;</span> +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">school</span> +<br>      <span class="hljs-string">&quot; an&quot;</span> +<br>      <span class="hljs-string">&quot;d &quot;</span> +<br>      <span class="hljs-string">&quot;m&quot;</span> +<br>      <span class="hljs-string">&quot;y&quot;</span> +<br>      <span class="hljs-string">&quot; fa&quot;</span> +<br>      <span class="hljs-string">&quot;vo&quot;</span> +<br>      <span class="hljs-string">&quot;ur&quot;</span> +<br>      <span class="hljs-string">&quot;ite&quot;</span> +<br>      <span class="hljs-string">&quot; ani&quot;</span> +<br>      <span class="hljs-string">&quot;ma&quot;</span> +<br>      <span class="hljs-string">&quot;l&quot;</span> +<br>      <span class="hljs-string">&quot; is&quot;</span> +<br>      <span class="hljs-string">&quot; a &quot;</span> +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">favAnimal</span>;<br>    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(helloStatement);<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>By manual inspection, you can probably deduce that it can be reduced to this:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Snippet 1, manually deobfuscated</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">class</span> <span class="hljs-title class_">Person</span> &#123;<br>  <span class="hljs-title function_">constructor</span>(<span class="hljs-params">name, school, animal</span>) &#123;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">name</span> = name;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">school</span> = school;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">favAnimal</span> = animal;<br>  &#125;<br>  <span class="hljs-title function_">sayHello</span>(<span class="hljs-params"></span>) &#123;<br>    <span class="hljs-keyword">let</span> helloStatement =<br>      <span class="hljs-string">&quot;Hello, my name is &quot;</span> +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">name</span> +<br>      <span class="hljs-string">&quot;. I go to &quot;</span> +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">school</span> +<br>      <span class="hljs-string">&quot; and my favourite animal is a &quot;</span> +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">favAnimal</span>;<br>    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(helloStatement);<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>However, if we try running the deobfuscator we made above against the obfuscated snippet, it yields this result:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Snippet 1, processed through the deobfuscator</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">class</span> <span class="hljs-title class_">Person</span> &#123;<br>  <span class="hljs-title function_">constructor</span>(<span class="hljs-params">name, school, emoji</span>) &#123;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">name</span> = name;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">school</span> = school;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">favAnimal</span> = emoji;<br>  &#125;<br><br>  <span class="hljs-title function_">sayHello</span>(<span class="hljs-params"></span>) &#123;<br>    <span class="hljs-keyword">let</span> helloStatement =<br>      <span class="hljs-string">&quot;Hello, my name is &quot;</span> +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">name</span> +<br>      <span class="hljs-string">&quot;. I g&quot;</span> +<br>      <span class="hljs-string">&quot;o t&quot;</span> +<br>      <span class="hljs-string">&quot;o &quot;</span> +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">school</span> +<br>      <span class="hljs-string">&quot; an&quot;</span> +<br>      <span class="hljs-string">&quot;d &quot;</span> +<br>      <span class="hljs-string">&quot;m&quot;</span> +<br>      <span class="hljs-string">&quot;y&quot;</span> +<br>      <span class="hljs-string">&quot; fa&quot;</span> +<br>      <span class="hljs-string">&quot;vo&quot;</span> +<br>      <span class="hljs-string">&quot;ur&quot;</span> +<br>      <span class="hljs-string">&quot;ite&quot;</span> +<br>      <span class="hljs-string">&quot; ani&quot;</span> +<br>      <span class="hljs-string">&quot;ma&quot;</span> +<br>      <span class="hljs-string">&quot;l&quot;</span> +<br>      <span class="hljs-string">&quot; is&quot;</span> +<br>      <span class="hljs-string">&quot; a &quot;</span> +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">favAnimal</span>;<br>    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(helloStatement);<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>It hasn’t been simplified at all! But why?</p>
+<h3 id="Where-The-Issue-Lies"><a href="#Where-The-Issue-Lies" class="headerlink" title="Where The Issue Lies"></a>Where The Issue Lies</h3><p>To figure out what the problem is, let’s use a debugger and set breakpoints to try and understand what our deobfuscator is actually doing.</p>
+<p><img src="/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/constantFolding4.png" srcset="/img/loading.gif" lazyload alt="Placing a debugger statement"></p>
+<p>We know that our visitor is acting on nodes of type <em>BinaryExpression</em>. A binary expression always has 3 main components: a left side, a right side, and an operator. For our example, the operator is always addition, <code>+</code>. On each iteration, let’s run these commands in the debug console to check what our left and right side are.</p>
+<ul>
+<li><code>generate(path.node).code</code></li>
+<li><code>generate(path.node.left).code</code></li>
+<li><code>generate(path.node.right).code</code></li>
+</ul>
+<p>Below is a screencap of what the first two iterations would look like:</p>
+<p><img src="/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/constantFolding5.png" srcset="/img/loading.gif" lazyload alt="The first and second pause"></p>
+<p>When the visitor is first called, path.evaluate() will not return a value and the <code>confident</code> return value will be <code>false</code>. A <code>false</code> value for <code>confident</code> arises when the expression to be evaluated contains a variable whose value is currently unknown, and therefore Babel cannot be “confident” when attempting to compute an expression containing it. In the case of the first expression, the unknown variable (<code>this.favAnimal</code>) on the right side of the expression, and two unknown variables: (<code>this.name</code> &amp; <code>this.school</code>) on the left side of the expression prevent path.evaluate() for returning a literal value. When the debugger statement is reached for a second time, the right-hand side of the expression is a <em>StringLiteral</em> (<code>&quot;a&quot;</code>). However, the left-hand side still contains variables with an unknown value. If we were to continue this for each time the breakpoint is encountered, the structure would look like this:</p>
+<table>
+<thead>
+<tr>
+<th>Iteration</th>
+<th>Left Side</th>
+<th>Operator</th>
+<th>Right Side</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an” + “d “ + “m” + “y” + “ fa” + “vo” + “ur” + “ite” + “ ani” + “ma” + “l” + “ is” + “ a “</td>
+<td>+</td>
+<td>this.favAnimal</td>
+</tr>
+<tr>
+<td>2</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an” + “d “ + “m” + “y” + “ fa” + “vo” + “ur” + “ite” + “ ani” + “ma” + “l” + “ is”</td>
+<td>+</td>
+<td>“ a”</td>
+</tr>
+<tr>
+<td>3</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an” + “d “ + “m” + “y” + “ fa” + “vo” + “ur” + “ite” + “ ani” + “ma” + “l”</td>
+<td>+</td>
+<td>“ is”</td>
+</tr>
+<tr>
+<td>4</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an” + “d “ + “m” + “y” + “ fa” + “vo” + “ur” + “ite” + “ ani” + “ma”</td>
+<td>+</td>
+<td>“l”</td>
+</tr>
+<tr>
+<td>5</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an” + “d “ + “m” + “y” + “ fa” + “vo” + “ur” + “ite” + “ ani”</td>
+<td>+</td>
+<td>“ma”</td>
+</tr>
+<tr>
+<td>6</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an” + “d “ + “m” + “y” + “ fa” + “vo” + “ur” + “ite”</td>
+<td>+</td>
+<td>“ ani”</td>
+</tr>
+<tr>
+<td>7</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an” + “d “ + “m” + “y” + “ fa” + “vo” + “ur”</td>
+<td>+</td>
+<td>“ite”</td>
+</tr>
+<tr>
+<td>8</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an” + “d “ + “m” + “y” + “ fa” + “vo”</td>
+<td>+</td>
+<td>“ur”</td>
+</tr>
+<tr>
+<td>9</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an” + “d “ + “m” + “y” + “ fa”</td>
+<td>+</td>
+<td>“vo”</td>
+</tr>
+<tr>
+<td>10</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an” + “d “ + “m” + “y”</td>
+<td>+</td>
+<td>“ fa”</td>
+</tr>
+<tr>
+<td>11</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an” + “d “ + “m”</td>
+<td>+</td>
+<td>“y”</td>
+</tr>
+<tr>
+<td>12</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an” + “d “</td>
+<td>+</td>
+<td>“m”</td>
+</tr>
+<tr>
+<td>13</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an”</td>
+<td>+</td>
+<td>“d “</td>
+</tr>
+<tr>
+<td>14</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school</td>
+<td>+</td>
+<td>“ an”</td>
+</tr>
+<tr>
+<td>14</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “</td>
+<td>+</td>
+<td>this.school</td>
+</tr>
+<tr>
+<td>14</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t”</td>
+<td>+</td>
+<td>“o “</td>
+</tr>
+<tr>
+<td>14</td>
+<td>“Hello, my name is “ + this.name + “. I g”</td>
+<td>+</td>
+<td>“o t”</td>
+</tr>
+<tr>
+<td>14</td>
+<td>“Hello, my name is “ + this.name</td>
+<td>+</td>
+<td>“. I g”</td>
+</tr>
+<tr>
+<td>14</td>
+<td>“Hello, my name is “</td>
+<td>+</td>
+<td>this.name</td>
+</tr>
+</tbody></table>
+<p>It’s evident that at every encounter, one of the sides will <em>always</em> contain a variable of unknown value. Therefore, path.evaluate() will return <code>confident: false</code> and be useless in simplifying the expression. So, we’ll need to try something else.</p>
+<h3 id="Constructing-the-Solution"><a href="#Constructing-the-Solution" class="headerlink" title="Constructing the Solution"></a>Constructing the Solution</h3><h4 id="Idea-1-Prioritizing-Chunks-of-Consecutive-Literals"><a href="#Idea-1-Prioritizing-Chunks-of-Consecutive-Literals" class="headerlink" title="Idea #1: Prioritizing Chunks of Consecutive Literals"></a>Idea #1: Prioritizing Chunks of Consecutive Literals</h4><p>We know that the issue lies with one of the sides containing a variable. However, we can see that there are chunks of the code that contain <em><strong>consecutive string literals only</strong></em>:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-comment">//Chunk 1</span><br><span class="hljs-string">&quot;Hello, my name is &quot;</span>;<br><span class="hljs-comment">//Chunk 2</span><br><span class="hljs-string">&quot;. I g&quot;</span> + <span class="hljs-string">&quot;o t&quot;</span> + <span class="hljs-string">&quot;o &quot;</span>;<br><br><span class="hljs-comment">// Chunk 3</span><br><span class="hljs-string">&quot; an&quot;</span> +<br>  <span class="hljs-string">&quot;d &quot;</span> +<br>  <span class="hljs-string">&quot;m&quot;</span> +<br>  <span class="hljs-string">&quot;y&quot;</span> +<br>  <span class="hljs-string">&quot; fa&quot;</span> +<br>  <span class="hljs-string">&quot;vo&quot;</span> +<br>  <span class="hljs-string">&quot;ur&quot;</span> +<br>  <span class="hljs-string">&quot;ite&quot;</span> +<br>  <span class="hljs-string">&quot; ani&quot;</span> +<br>  <span class="hljs-string">&quot;ma&quot;</span> +<br>  <span class="hljs-string">&quot;l&quot;</span> +<br>  <span class="hljs-string">&quot; is&quot;</span> +<br>  <span class="hljs-string">&quot; a &quot;</span>;<br></code></pre></td></tr></table></figure>
+
+<p>If there were some way to prioritize these smaller chunks, then surely path.evaluate() would be able to simplify them. This is indeed the case, as we can prove this by manually wrapping each of these chunks in parentheses to force them to be evaluated first:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Snippet 2: wrapping consecutive strings in parentheses</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">class</span> <span class="hljs-title class_">Person</span> &#123;<br>  <span class="hljs-title function_">constructor</span>(<span class="hljs-params">name, school, emoji</span>) &#123;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">name</span> = name;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">school</span> = school;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">favAnimal</span> = emoji;<br>  &#125;<br><br>  <span class="hljs-title function_">sayHello</span>(<span class="hljs-params"></span>) &#123;<br>    <span class="hljs-keyword">let</span> helloStatement =<br>      <span class="hljs-string">&quot;Hello, my name is &quot;</span> +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">name</span> +<br>      (<span class="hljs-string">&quot;. I g&quot;</span> + <span class="hljs-string">&quot;o t&quot;</span> + <span class="hljs-string">&quot;o &quot;</span>) +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">school</span> +<br>      (<span class="hljs-string">&quot; an&quot;</span> +<br>        <span class="hljs-string">&quot;d &quot;</span> +<br>        <span class="hljs-string">&quot;m&quot;</span> +<br>        <span class="hljs-string">&quot;y&quot;</span> +<br>        <span class="hljs-string">&quot; fa&quot;</span> +<br>        <span class="hljs-string">&quot;vo&quot;</span> +<br>        <span class="hljs-string">&quot;ur&quot;</span> +<br>        <span class="hljs-string">&quot;ite&quot;</span> +<br>        <span class="hljs-string">&quot; ani&quot;</span> +<br>        <span class="hljs-string">&quot;ma&quot;</span> +<br>        <span class="hljs-string">&quot;l&quot;</span> +<br>        <span class="hljs-string">&quot; is&quot;</span> +<br>        <span class="hljs-string">&quot; a &quot;</span>) +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">favAnimal</span>;<br>    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(helloStatement);<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>Running this through the deobfuscator, we get our desired result:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Snippet 2, processed through the deobfuscator.</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">class</span> <span class="hljs-title class_">Person</span> &#123;<br>  <span class="hljs-title function_">constructor</span>(<span class="hljs-params">name, school, emoji</span>) &#123;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">name</span> = name;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">school</span> = school;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">favAnimal</span> = emoji;<br>  &#125;<br><br>  <span class="hljs-title function_">sayHello</span>(<span class="hljs-params"></span>) &#123;<br>    <span class="hljs-keyword">let</span> helloStatement =<br>      <span class="hljs-string">&quot;Hello, my name is &quot;</span> +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">name</span> +<br>      <span class="hljs-string">&quot;. I go to &quot;</span> +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">school</span> +<br>      <span class="hljs-string">&quot; and my favourite animal is a &quot;</span> +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">favAnimal</span>;<br>    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(helloStatement);<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>Alright, so that did the job. But for very long binary expressions which you might encounter in wild obfuscated scripts, you certainly <em>do not</em> want to have to spend time manually wrapping chunks of consecutive strings in parentheses. Sure, you could probably automate it with Regex, or write an AST-based algorithm to add brackets to the source string, but there has to be a less complicated way, right?</p>
+<p>The answer: Yes, there is. And we are on the right track.</p>
+<h4 id="Idea-2-Even-Smaller-Chunks"><a href="#Idea-2-Even-Smaller-Chunks" class="headerlink" title="Idea #2: Even Smaller Chunks"></a>Idea #2: Even <em>Smaller</em> Chunks</h4><p>Okay, so we know that trying to pinpoint and prioritize chunks of consecutive strings with varying lengths can be troublesome. But what if we just split the binary expression into the smallest possible pieces and prioritized those?</p>
+<p>I’ll admit, that probably sounds confusing. So I’ll do my best to explain what I mean with an example.</p>
+<p>We know that a binary expression, in its simplest form, consists of a left side, an operator, and a right side. Let’s refer back to the first three rows of the table we made:</p>
+<table>
+<thead>
+<tr>
+<th>Iteration</th>
+<th>Left Side</th>
+<th>Operator</th>
+<th>Right Side</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an” + “d “ + “m” + “y” + “ fa” + “vo” + “ur” + “ite” + “ ani” + “ma” + “l” + “ is” + “ a “</td>
+<td>+</td>
+<td>this.favAnimal</td>
+</tr>
+<tr>
+<td>2</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an” + “d “ + “m” + “y” + “ fa” + “vo” + “ur” + “ite” + “ ani” + “ma” + “l” + “ is”</td>
+<td>+</td>
+<td>“ a”</td>
+</tr>
+<tr>
+<td>3</td>
+<td>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an” + “d “ + “m” + “y” + “ fa” + “vo” + “ur” + “ite” + “ ani” + “ma” + “l”</td>
+<td>+</td>
+<td>“ is”</td>
+</tr>
+</tbody></table>
+<p>The right side of our binary expression is always only one element long, and is either a literal value or an identifier. However, the left side isn’t a single element long. Rather, it’s also a binary expression, containing both literal values and identifiers. What I propose is developing an algorithm to ensure that both the left side and right side are only a single element long. Then, if both are string literals, we can concatenate them. If not, we can simply move on.</p>
+<p>To do this, let us look at the above table again, but only the first two rows. However, for the left side, let’s only take into consideration the <strong><em>right-most edge</em></strong> of the expression. That would look something like this:</p>
+<table>
+<thead>
+<tr>
+<th>Iteration</th>
+<th>Right Edge of Left Side</th>
+<th>Operator</th>
+<th>Right Side</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><del>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an” + “d “ + “m” + “y” + “ fa” + “vo” + “ur” + “ite” + “ ani” + “ma” + “l” + “ is” +</del> <strong>“ a “</strong></td>
+<td>+</td>
+<td><strong>this.favAnimal</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td><del>“Hello, my name is “ + this.name + “. I g” + “o t” + “o “ + this.school + “ an” + “d “ + “m” + “y” + “ fa” + “vo” + “ur” + “ite” + “ ani” + “ma” + “l” +</del> <strong>“ is”</strong></td>
+<td>+</td>
+<td><strong>“ a”</strong></td>
+</tr>
+</tbody></table>
+<p>If we were to evaluate these now, we would observe the following:</p>
+<ul>
+<li>Row 1 still cannot be evaluated, since it is a <code>StringLiteral</code> + <code>a variable of unknown value</code>.</li>
+<li>Row 2 can be simplified into a single string literal: <code>&quot; is&quot; + &quot; a&quot;</code> &#x3D;&gt; <code>&quot; is a&quot;</code></li>
+</ul>
+<p>We can then replace the <em>right-most edge of the left side</em> with the simplified result, so it will become the right side in the next iteration. This way, we can simplify consecutive concatenation of strings step by step. Keep in mind, that each simplification will affect the next iteration’s right side. The reason I included the first few rows and not the third, is because the simplification in the second iteration would change the right side of the third iteration, so it would no longer look like the original table.</p>
+<p>Following the new algorithm, each iteration of our visitor would look like this:</p>
+<table>
+<thead>
+<tr>
+<th>Iteration</th>
+<th>Right Edge of Left Side</th>
+<th>Operator</th>
+<th>Right Side</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>“ a “</td>
+<td>+</td>
+<td>this.favAnimal</td>
+</tr>
+<tr>
+<td>2</td>
+<td>“ is”</td>
+<td>+</td>
+<td>“ a”</td>
+</tr>
+<tr>
+<td>3</td>
+<td>“l”</td>
+<td>+</td>
+<td>“ is a”</td>
+</tr>
+<tr>
+<td>4</td>
+<td>“ma”</td>
+<td>+</td>
+<td>“l is a”</td>
+</tr>
+<tr>
+<td>5</td>
+<td>“ ani”</td>
+<td>+</td>
+<td>“mal is a”</td>
+</tr>
+<tr>
+<td>6</td>
+<td>“ite”</td>
+<td>+</td>
+<td>“ animal is a”</td>
+</tr>
+<tr>
+<td>7</td>
+<td>“ur”</td>
+<td>+</td>
+<td>“ite animal is a”</td>
+</tr>
+<tr>
+<td>8</td>
+<td>“vo”</td>
+<td>+</td>
+<td>“urite animal is a”</td>
+</tr>
+<tr>
+<td>9</td>
+<td>“ fa”</td>
+<td>+</td>
+<td>“vourite animal is a”</td>
+</tr>
+<tr>
+<td>10</td>
+<td>“y”</td>
+<td>+</td>
+<td>“ favourite animal is a”</td>
+</tr>
+<tr>
+<td>11</td>
+<td>“m”</td>
+<td>+</td>
+<td>“y favourite animal is a”</td>
+</tr>
+<tr>
+<td>12</td>
+<td>“d “</td>
+<td>+</td>
+<td>“my favourite animal is a”</td>
+</tr>
+<tr>
+<td>13</td>
+<td>“ an”</td>
+<td>+</td>
+<td>“d my favourite animal is a”</td>
+</tr>
+<tr>
+<td>14</td>
+<td>this.school</td>
+<td>+</td>
+<td>“ and my favourite animal is a”</td>
+</tr>
+<tr>
+<td>14</td>
+<td>“o “</td>
+<td>+</td>
+<td>this.school</td>
+</tr>
+<tr>
+<td>14</td>
+<td>“o t”</td>
+<td>+</td>
+<td>“o “</td>
+</tr>
+<tr>
+<td>14</td>
+<td>“. I g”</td>
+<td>+</td>
+<td>“o to “</td>
+</tr>
+<tr>
+<td>14</td>
+<td>this.name</td>
+<td>+</td>
+<td>“. I go to “</td>
+</tr>
+<tr>
+<td>14</td>
+<td>“Hello, my name is “</td>
+<td>+</td>
+<td>this.name</td>
+</tr>
+</tbody></table>
+<p>So, by following this algorithm, we should be able to combine all consecutive string literals into one.</p>
+<p><span style="font-size:35px;bold"><b>WAIT! There’s something wrong here…</b></span></p>
+<p>The line of code we start with is <code>let helloStatement = &quot;Hello, my name is &quot; + this.name + &quot;. I g&quot; + &quot;o t&quot; + &quot;o &quot; + this.school + &quot; an&quot; + &quot;d &quot; + &quot;m&quot; + &quot;y&quot; + &quot; fa&quot; + &quot;vo&quot; + &quot;ur&quot; + &quot;ite&quot; + &quot; ani&quot; + &quot;ma&quot; + &quot;l&quot; + &quot; is&quot; + &quot; a &quot; + this.favAnimal;</code></p>
+<p>We know that on the second iteration, <code>&quot; is&quot;</code> and <code>&quot; a&quot;</code> will be concatenated into a single string literal, then the right-most edge of the left side will be replaced with the resulting value. That is,</p>
+<p><code>&quot; is&quot;</code> &#x3D;&gt; <code>&quot; is a&quot;</code></p>
+<p>The problem here is that we are adding the right side of the expression to the right edge of the left side of the expression. However, the original right side remains unchanged despite already being accounted for. The code after one iteration would then look like this:</p>
+<p><code>let helloStatement = &quot;Hello, my name is &quot; + this.name + &quot;. I g&quot; + &quot;o t&quot; + &quot;o &quot; + this.school + &quot; an&quot; + &quot;d &quot; + &quot;m&quot; + &quot;y&quot; + &quot; fa&quot; + &quot;vo&quot; + &quot;ur&quot; + &quot;ite&quot; + &quot; ani&quot; + &quot;ma&quot; + &quot;l&quot; + &quot; is a &quot; + &quot; a &quot; + this.favAnimal;</code></p>
+<p>Notice the extra duplicate near the end, <code>&quot; is a &quot; + &quot; a &quot;</code>. To fix this, we need to ensure that we <strong>delete the original right side of the expression after doing the concatenation and replacement</strong>.</p>
+<p>So, based on this logic, the correct steps for creating the deobfuscator are as follows:</p>
+<h3 id="Writing-The-Deobfuscator-Logic"><a href="#Writing-The-Deobfuscator-Logic" class="headerlink" title="Writing The Deobfuscator Logic"></a>Writing The Deobfuscator Logic</h3><ol>
+<li><p>Traverse the ast in search of BinaryExpressions. When one is encountered:</p>
+<ol>
+<li>If both the right side (<code>path.node.right</code>) and the left side (<code>path.node.left</code>) are of type <em>StringLiteral</em>, we can use the algorithm for the basic case.</li>
+<li>If not:<ol>
+<li>Check if the right side, (<code>path.node.right</code>) is a <em>StringLiteral</em>. If it isn’t, skip this node by returning.</li>
+<li>Check if the <em>right-most edge of the left-side</em> (<code>path.node.left.right</code>) is a <em>StringLiteral</em>. If it isn’t, skip this node by returning.</li>
+<li>Check if the operator is addition (<code>+</code>). If it isn’t, skip this node by returning.</li>
+<li>Evaluate the <em>right-most edge of the left-side</em> + the right side; <code>path.node.left.right.value + path.node.right.value</code> and assign it’s StringLiteral representation to a variable, <code>concatResult</code>.</li>
+<li>Replace the <em>right-most edge of the left-side</em> with <code>concatResult</code>.</li>
+<li>Remove the original right side of the expression as it is now a duplicate.</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+<p>The Babel implementation is as follows:</p>
+<h3 id="Babel-Deobfuscation-Script-1"><a href="#Babel-Deobfuscation-Script-1" class="headerlink" title="Babel Deobfuscation Script"></a>Babel Deobfuscation Script</h3><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Deobfuscator.js</span><br><span class="hljs-comment"> * The babel script used to deobfuscate the target file</span><br><span class="hljs-comment"> *</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">const</span> parser = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/parser&quot;</span>);<br><span class="hljs-keyword">const</span> traverse = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/traverse&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> t = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/types&quot;</span>);<br><span class="hljs-keyword">const</span> generate = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/generator&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> beautify = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;js-beautify&quot;</span>);<br><span class="hljs-keyword">const</span> &#123; readFileSync, writeFile &#125; = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;fs&quot;</span>);<br><br><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Main function to deobfuscate the code.</span><br><span class="hljs-comment"> * <span class="hljs-doctag">@param</span> source The source code of the file to be deobfuscated</span><br><span class="hljs-comment"> *</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">function</span> <span class="hljs-title function_">deobfuscate</span>(<span class="hljs-params">source</span>) &#123;<br>  <span class="hljs-comment">//Parse AST of Source Code</span><br>  <span class="hljs-keyword">const</span> ast = parser.<span class="hljs-title function_">parse</span>(source);<br><br>  <span class="hljs-comment">// Visitor for constant folding</span><br>  <span class="hljs-keyword">const</span> foldConstantsVisitor = &#123;<br>    <span class="hljs-title class_">BinaryExpression</span>(path) &#123;<br>      <span class="hljs-keyword">const</span> left = path.<span class="hljs-title function_">get</span>(<span class="hljs-string">&quot;left&quot;</span>);<br>      <span class="hljs-keyword">const</span> right = path.<span class="hljs-title function_">get</span>(<span class="hljs-string">&quot;right&quot;</span>);<br>      <span class="hljs-keyword">const</span> operator = path.<span class="hljs-title function_">get</span>(<span class="hljs-string">&quot;operator&quot;</span>).<span class="hljs-property">node</span>;<br><br>      <span class="hljs-keyword">if</span> (t.<span class="hljs-title function_">isStringLiteral</span>(left.<span class="hljs-property">node</span>) &amp;&amp; t.<span class="hljs-title function_">isStringLiteral</span>(right.<span class="hljs-property">node</span>)) &#123;<br>        <span class="hljs-comment">// In this case, we can use the old algorithm</span><br>        <span class="hljs-comment">// Evaluate the binary expression</span><br>        <span class="hljs-keyword">let</span> &#123; confident, value &#125; = path.evaluate();<br>        <span class="hljs-comment">// Skip if not confident</span><br>        <span class="hljs-keyword">if</span> (!confident) <span class="hljs-keyword">return</span>;<br>        <span class="hljs-comment">// Create a new node, infer the type</span><br>        <span class="hljs-keyword">let</span> actualVal = t.<span class="hljs-title function_">valueToNode</span>(value);<br>        <span class="hljs-comment">// Skip if not a Literal type (e.g. StringLiteral, NumericLiteral, Boolean Literal etc.)</span><br>        <span class="hljs-keyword">if</span> (!t.<span class="hljs-title function_">isStringLiteral</span>(actualVal)) <span class="hljs-keyword">return</span>;<br>        <span class="hljs-comment">// Replace the BinaryExpression with the simplified value</span><br>        path.<span class="hljs-title function_">replaceWith</span>(actualVal);<br>      &#125; <span class="hljs-keyword">else</span> &#123;<br>        <span class="hljs-comment">// Check if the right side is a StringLiteral. If it isn&#x27;t, skip this node by returning.</span><br>        <span class="hljs-keyword">if</span> (!t.<span class="hljs-title function_">isStringLiteral</span>(right.<span class="hljs-property">node</span>)) <span class="hljs-keyword">return</span>;<br>        <span class="hljs-comment">//Check if the right sideis a StringLiteral. If it isn&#x27;t, skip this node by returning.</span><br>        <span class="hljs-keyword">if</span> (!t.<span class="hljs-title function_">isStringLiteral</span>(left.<span class="hljs-property">node</span>.<span class="hljs-property">right</span>)) <span class="hljs-keyword">return</span>;<br>        <span class="hljs-comment">// Check if the operator is addition (+). If it isn&#x27;t, skip this node by returning.</span><br>        <span class="hljs-keyword">if</span> (operator !== <span class="hljs-string">&quot;+&quot;</span>) <span class="hljs-keyword">return</span>;<br><br>        <span class="hljs-comment">// If all conditions are fine:</span><br><br>        <span class="hljs-comment">// Evaluate the _right-most edge of the left-side_ + the right side;</span><br>        <span class="hljs-keyword">let</span> concatResult = t.<span class="hljs-title class_">StringLiteral</span>(<br>          left.<span class="hljs-property">node</span>.<span class="hljs-property">right</span>.<span class="hljs-property">value</span> + right.<span class="hljs-property">node</span>.<span class="hljs-property">value</span><br>        );<br>        <span class="hljs-comment">// Replace the _right-most edge of the left-side_ with `concatResult`.</span><br>        left.<span class="hljs-title function_">get</span>(<span class="hljs-string">&quot;right&quot;</span>).<span class="hljs-title function_">replaceWith</span>(concatResult);<br>        <span class="hljs-comment">//Remove the original right side of the expression as it is now a duplicate.</span><br>        right.<span class="hljs-title function_">remove</span>();<br>      &#125;<br>    &#125;,<br>  &#125;;<br><br>  <span class="hljs-comment">// Execute the visitor</span><br>  <span class="hljs-title function_">traverse</span>(ast, foldConstantsVisitor);<br><br>  <span class="hljs-comment">// Code Beautification</span><br>  <span class="hljs-keyword">let</span> deobfCode = <span class="hljs-title function_">generate</span>(ast, &#123; <span class="hljs-attr">comments</span>: <span class="hljs-literal">false</span> &#125;).<span class="hljs-property">code</span>;<br>  deobfCode = <span class="hljs-title function_">beautify</span>(deobfCode, &#123;<br>    <span class="hljs-attr">indent_size</span>: <span class="hljs-number">2</span>,<br>    <span class="hljs-attr">space_in_empty_paren</span>: <span class="hljs-literal">true</span>,<br>  &#125;);<br>  <span class="hljs-comment">// Output the deobfuscated result</span><br>  <span class="hljs-title function_">writeCodeToFile</span>(deobfCode);<br>&#125;<br><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Writes the deobfuscated code to output.js</span><br><span class="hljs-comment"> * <span class="hljs-doctag">@param</span> code The deobfuscated code</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">function</span> <span class="hljs-title function_">writeCodeToFile</span>(<span class="hljs-params">code</span>) &#123;<br>  <span class="hljs-keyword">let</span> outputPath = <span class="hljs-string">&quot;output.js&quot;</span>;<br>  <span class="hljs-title function_">writeFile</span>(outputPath, code, <span class="hljs-function">(<span class="hljs-params">err</span>) =&gt;</span> &#123;<br>    <span class="hljs-keyword">if</span> (err) &#123;<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">&quot;Error writing file&quot;</span>, err);<br>    &#125; <span class="hljs-keyword">else</span> &#123;<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Wrote file to <span class="hljs-subst">$&#123;outputPath&#125;</span>`</span>);<br>    &#125;<br>  &#125;);<br>&#125;<br><br><span class="hljs-title function_">deobfuscate</span>(<span class="hljs-title function_">readFileSync</span>(<span class="hljs-string">&quot;./splitStringsObfuscated.js&quot;</span>, <span class="hljs-string">&quot;utf8&quot;</span>));<br></code></pre></td></tr></table></figure>
+
+<p>After processing the obfuscated script with the babel plugin above, we get the following result:</p>
+<h3 id="Post-Deobfuscation-Result-1"><a href="#Post-Deobfuscation-Result-1" class="headerlink" title="Post-Deobfuscation Result"></a>Post-Deobfuscation Result</h3><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-keyword">class</span> <span class="hljs-title class_">Person</span> &#123;<br>  <span class="hljs-title function_">constructor</span>(<span class="hljs-params">name, school, emoji</span>) &#123;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">name</span> = name;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">school</span> = school;<br>    <span class="hljs-variable language_">this</span>.<span class="hljs-property">favAnimal</span> = emoji;<br>  &#125;<br><br>  <span class="hljs-title function_">sayHello</span>(<span class="hljs-params"></span>) &#123;<br>    <span class="hljs-keyword">let</span> helloStatement =<br>      <span class="hljs-string">&quot;Hello, my name is &quot;</span> +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">name</span> +<br>      <span class="hljs-string">&quot;. I go to &quot;</span> +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">school</span> +<br>      <span class="hljs-string">&quot; and my favourite animal is a &quot;</span> +<br>      <span class="hljs-variable language_">this</span>.<span class="hljs-property">favAnimal</span>;<br>    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(helloStatement);<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>And all consecutive StringLiterals have been concatenated! Huzzah!</p>
+<h1 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h1><p>Okay, I hope that second example wasn’t <em>too</em> confusing. Sometimes, you’ll be able to avoid the problem with unknown variable values by replacing references to a constant variable with their actual value. If you’re interested in that, you can read my article about it <a href="http://steakenthusiast.github.io/2022/05/31/Deobfuscating-Javascript-via-AST-Replacing-References-to-Constant-Variables-with-Their-Actual-Value/">here</a>. In this case, however, it was unavoidable due to being within a class definition where variables have yet to be initialized.</p>
+<p>Keep in mind that the second example will only work for <em>String Literals</em> and <em>addition</em>. But, it can easily be adapted to other node types and operators. I’ll leave that as a challenge for you, dear reader, if you wish to pursue it further 😉</p>
+<p>If you’re interested, you can find the source code for all the examples in <a target="_blank" rel="noopener" href="https://github.com/SteakEnthusiast/Supplementary-AST-Based-Deobfuscation-Materials">this repository</a>.</p>
+<p>Anyways, that’s all I have for you today. I hope that this article helped you learn something new. Thanks for reading, and happy reversing!</p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Deobfuscation/" class="category-chain-item">Deobfuscation</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/Javascript/">#Javascript</a>
+      
+        <a href="/tags/Deobfuscation/">#Deobfuscation</a>
+      
+        <a href="/tags/Babel/">#Babel</a>
+      
+        <a href="/tags/Reverse-Engineering/">#Reverse Engineering</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Deobfuscating Javascript via AST: Constant Folding/Binary Expression Simplification</div>
+      <div>http://steakenthusiast.github.io/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>Author</div>
+          <div>William Khem Marquez</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>Posted on</div>
+          <div>May 28, 2022</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>Licensed under</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - Attribution">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2022/05/31/Deobfuscating-Javascript-via-AST-Replacing-References-to-Constant-Variables-with-Their-Actual-Value/" title="Deobfuscating Javascript via AST: Replacing References to Constant Variables with Their Actual Value">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Deobfuscating Javascript via AST: Replacing References to Constant Variables with Their Actual Value</span>
+                        <span class="visible-mobile">Previous</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Converting-Bracket-Notation-Dot-Notation-for-Property-Accessors/" title="Deobfuscating Javascript via AST: Converting Bracket Notation =&gt; Dot Notation for Property Accessors">
+                        <span class="hidden-mobile">Deobfuscating Javascript via AST: Converting Bracket Notation =&gt; Dot Notation for Property Accessors</span>
+                        <span class="visible-mobile">Next</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>Table of Contents</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">Search</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">Keyword</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.0/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.10/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">Blog works best with JavaScript enabled</div>
+  </noscript>
+</body>
+</html>

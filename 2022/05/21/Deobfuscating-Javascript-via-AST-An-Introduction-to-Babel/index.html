@@ -1,0 +1,857 @@
+
+
+<!DOCTYPE html>
+<html lang="en" data-default-color-scheme=dark>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/../images/ico.jpg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="William Khem Marquez">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="IntroductionWelcome to the first article in my series about Javascript deobfuscation. I won’t be going in-depth regarding practical deobfuscation techniques; that’ll be reserved for later articles. Ra">
+<meta property="og:type" content="article">
+<meta property="og:title" content="An Introduction to Javascript Obfuscation &amp; Babel">
+<meta property="og:url" content="http://steakenthusiast.github.io/2022/05/21/Deobfuscating-Javascript-via-AST-An-Introduction-to-Babel/index.html">
+<meta property="og:site_name" content="ReverseJS">
+<meta property="og:description" content="IntroductionWelcome to the first article in my series about Javascript deobfuscation. I won’t be going in-depth regarding practical deobfuscation techniques; that’ll be reserved for later articles. Ra">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/05/21/Deobfuscating-Javascript-via-AST-An-Introduction-to-Babel/intro1.PNG">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/05/21/Deobfuscating-Javascript-via-AST-An-Introduction-to-Babel/intro2.png">
+<meta property="article:published_time" content="2022-05-22T03:44:58.000Z">
+<meta property="article:modified_time" content="2023-10-11T01:24:11.686Z">
+<meta property="article:author" content="William Khem Marquez">
+<meta property="article:tag" content="Javascript">
+<meta property="article:tag" content="Deobfuscation">
+<meta property="article:tag" content="Babel">
+<meta property="article:tag" content="Reverse Engineering">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://steakenthusiast.github.io/2022/05/21/Deobfuscating-Javascript-via-AST-An-Introduction-to-Babel/intro1.PNG">
+  
+  
+  
+  <title>An Introduction to Javascript Obfuscation &amp; Babel-ReverseJS</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"steakenthusiast.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":40,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>ReverseJS</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>Home</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>Archives</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>Categories</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>Tags</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                <span>About</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" target="_blank" rel="noopener" href="https://github.com/SteakEnthusiast">
+                <i class="iconfont icon-github-fill"></i>
+                <span></span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" target="_blank" rel="noopener" href="https://www.linkedin.com/in/william-khem-marquez-3232b9222/">
+                <i class="iconfont icon-linkedin-fill"></i>
+                <span></span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/../images/background.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="An Introduction to Javascript Obfuscation &amp; Babel"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2022-05-21 23:44" pubdate>
+          May 21, 2022 pm
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">An Introduction to Javascript Obfuscation &amp; Babel</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>Welcome to the first article in my series about Javascript deobfuscation. I won’t be going in-depth regarding practical deobfuscation techniques; that’ll be reserved for later articles. Rather, this post serves as a brief overview of the state of Javascript obfuscation, different methods of analysis, and provides resources to learn more about reverse engineering Javascript.</p>
+<h1 id="What-is-Obfuscation"><a href="#What-is-Obfuscation" class="headerlink" title="What is Obfuscation?"></a>What is Obfuscation?</h1><h2 id="Definition"><a href="#Definition" class="headerlink" title="Definition"></a>Definition</h2><p>Obfuscation is a series of code transformations that turn human-readable code into something that is deliberately difficult for a human to understand, while (for the most part) still maintaining its original functionality. Code authors may choose to obfuscate their code for many reasons, including but not limited to:</p>
+<ul>
+<li>To make it harder to modify, debug, or reproduce (e.g. some javascript-based games or programs)</li>
+<li>To hide malicious intent (e.g. malware)</li>
+<li>To enhance security, i.e obscuring the logic behind javascript-based challenges or fingerprinting (e.g. ReCAPTCHA, Shape Security, PerimeterX, Akamai, DataDome)</li>
+</ul>
+<h2 id="Example"><a href="#Example" class="headerlink" title="Example"></a>Example</h2><p>For example, the obfuscation process can convert this human-readable script:</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs js"><span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">&quot;Hello&quot;</span>);<br></code></pre></td></tr></table></figure>
+
+<p>Into something incomprehensible to humans:</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br></pre></td><td class="code"><pre><code class="hljs js"><span class="hljs-keyword">var</span> _0x3b8ba1 = _0x57e2;<br><span class="hljs-keyword">function</span> <span class="hljs-title function_">_0x57e2</span>(<span class="hljs-params">_0x23db1e, _0x36111b</span>) &#123;<br>  <span class="hljs-keyword">var</span> _0x3bbee9 = <span class="hljs-title function_">_0x5936</span>();<br>  <span class="hljs-keyword">return</span> (<br>    (_0x57e2 = <span class="hljs-keyword">function</span> (<span class="hljs-params">_0x194e56, _0x27d4e2</span>) &#123;<br>      _0x194e56 = _0x194e56 - <span class="hljs-number">0x17e</span>;<br>      <span class="hljs-keyword">var</span> _0x2b5447 = _0x3bbee9[_0x194e56];<br>      <span class="hljs-keyword">return</span> _0x2b5447;<br>    &#125;),<br>    <span class="hljs-title function_">_0x57e2</span>(_0x23db1e, _0x36111b)<br>  );<br>&#125;<br>(<span class="hljs-keyword">function</span> (<span class="hljs-params">_0x3d5379, _0x27d8c9</span>) &#123;<br>  <span class="hljs-keyword">var</span> _0x26235b = _0x57e2,<br>    _0x556a19 = <span class="hljs-title function_">_0x3d5379</span>();<br>  <span class="hljs-keyword">while</span> (!![]) &#123;<br>    <span class="hljs-keyword">try</span> &#123;<br>      <span class="hljs-keyword">var</span> _0x15999f =<br>        <span class="hljs-built_in">parseInt</span>(<span class="hljs-title function_">_0x26235b</span>(<span class="hljs-number">0x183</span>)) / <span class="hljs-number">0x1</span> +<br>        <span class="hljs-built_in">parseInt</span>(<span class="hljs-title function_">_0x26235b</span>(<span class="hljs-number">0x185</span>)) / <span class="hljs-number">0x2</span> +<br>        (<span class="hljs-built_in">parseInt</span>(<span class="hljs-title function_">_0x26235b</span>(<span class="hljs-number">0x194</span>)) / <span class="hljs-number">0x3</span>) *<br>          (-<span class="hljs-built_in">parseInt</span>(<span class="hljs-title function_">_0x26235b</span>(<span class="hljs-number">0x18d</span>)) / <span class="hljs-number">0x4</span>) +<br>        <span class="hljs-built_in">parseInt</span>(<span class="hljs-title function_">_0x26235b</span>(<span class="hljs-number">0x188</span>)) / <span class="hljs-number">0x5</span> +<br>        (-<span class="hljs-built_in">parseInt</span>(<span class="hljs-title function_">_0x26235b</span>(<span class="hljs-number">0x18b</span>)) / <span class="hljs-number">0x6</span>) *<br>          (-<span class="hljs-built_in">parseInt</span>(<span class="hljs-title function_">_0x26235b</span>(<span class="hljs-number">0x187</span>)) / <span class="hljs-number">0x7</span>) +<br>        -<span class="hljs-built_in">parseInt</span>(<span class="hljs-title function_">_0x26235b</span>(<span class="hljs-number">0x182</span>)) / <span class="hljs-number">0x8</span> +<br>        -<span class="hljs-built_in">parseInt</span>(<span class="hljs-title function_">_0x26235b</span>(<span class="hljs-number">0x195</span>)) / <span class="hljs-number">0x9</span>;<br>      <span class="hljs-keyword">if</span> (_0x15999f === _0x27d8c9) <span class="hljs-keyword">break</span>;<br>      <span class="hljs-keyword">else</span> _0x556a19[<span class="hljs-string">&quot;push&quot;</span>](_0x556a19[<span class="hljs-string">&quot;shift&quot;</span>]());<br>    &#125; <span class="hljs-keyword">catch</span> (_0x3cc29a) &#123;<br>      _0x556a19[<span class="hljs-string">&quot;push&quot;</span>](_0x556a19[<span class="hljs-string">&quot;shift&quot;</span>]());<br>    &#125;<br>  &#125;<br>&#125;)(_0x5936, <span class="hljs-number">0x4bc84</span>);<br><span class="hljs-keyword">var</span> _0x5cff45 = (<span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) &#123;<br>    <span class="hljs-keyword">var</span> _0x5a2bb8 = !![];<br>    <span class="hljs-keyword">return</span> <span class="hljs-keyword">function</span> (<span class="hljs-params">_0x2e90c1, _0x495f04</span>) &#123;<br>      <span class="hljs-keyword">var</span> _0x1ac9d1 = _0x5a2bb8<br>        ? <span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) &#123;<br>            <span class="hljs-keyword">var</span> _0x261249 = _0x57e2;<br>            <span class="hljs-keyword">if</span> (_0x495f04) &#123;<br>              <span class="hljs-keyword">var</span> _0x3c800c = _0x495f04[<span class="hljs-title function_">_0x261249</span>(<span class="hljs-number">0x198</span>)](_0x2e90c1, <span class="hljs-variable language_">arguments</span>);<br>              <span class="hljs-keyword">return</span> (_0x495f04 = <span class="hljs-literal">null</span>), _0x3c800c;<br>            &#125;<br>          &#125;<br>        : <span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) &#123;&#125;;<br>      <span class="hljs-keyword">return</span> (_0x5a2bb8 = ![]), _0x1ac9d1;<br>    &#125;;<br>  &#125;)(),<br>  _0x1ea628 = <span class="hljs-title function_">_0x5cff45</span>(<span class="hljs-variable language_">this</span>, <span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) &#123;<br>    <span class="hljs-keyword">var</span> _0x4f765e = _0x57e2;<br>    <span class="hljs-keyword">return</span> _0x1ea628[<span class="hljs-title function_">_0x4f765e</span>(<span class="hljs-number">0x17f</span>)]()<br>      [<span class="hljs-string">&quot;search&quot;</span>](<span class="hljs-title function_">_0x4f765e</span>(<span class="hljs-number">0x18e</span>))<br>      [<span class="hljs-string">&quot;toString&quot;</span>]()<br>      [<span class="hljs-string">&quot;constructor&quot;</span>](_0x1ea628)<br>      [<span class="hljs-title function_">_0x4f765e</span>(<span class="hljs-number">0x192</span>)](<span class="hljs-title function_">_0x4f765e</span>(<span class="hljs-number">0x18e</span>));<br>  &#125;);<br><span class="hljs-title function_">_0x1ea628</span>();<br><span class="hljs-keyword">function</span> <span class="hljs-title function_">_0x5936</span>(<span class="hljs-params"></span>) &#123;<br>  <span class="hljs-keyword">var</span> _0x7289e8 = [<br>    <span class="hljs-string">&quot;Hello\x20World!&quot;</span>,<br>    <span class="hljs-string">&quot;toString&quot;</span>,<br>    <span class="hljs-string">&quot;log&quot;</span>,<br>    <span class="hljs-string">&quot;__proto__&quot;</span>,<br>    <span class="hljs-string">&quot;2888432EGELDh&quot;</span>,<br>    <span class="hljs-string">&quot;516645rknrWL&quot;</span>,<br>    <span class="hljs-string">&quot;trace&quot;</span>,<br>    <span class="hljs-string">&quot;928870xUjHrE&quot;</span>,<br>    <span class="hljs-string">&quot;error&quot;</span>,<br>    <span class="hljs-string">&quot;27965akgdka&quot;</span>,<br>    <span class="hljs-string">&quot;2813765Wufwlg&quot;</span>,<br>    <span class="hljs-string">&quot;return\x20(function()\x20&quot;</span>,<br>    <span class="hljs-string">&quot;warn&quot;</span>,<br>    <span class="hljs-string">&quot;48zUcTLM&quot;</span>,<br>    <span class="hljs-string">&quot;bind&quot;</span>,<br>    <span class="hljs-string">&quot;2668xZhNIu&quot;</span>,<br>    <span class="hljs-string">&quot;(((.+)+)+)+$&quot;</span>,<br>    <span class="hljs-string">&quot;prototype&quot;</span>,<br>    <span class="hljs-string">&quot;console&quot;</span>,<br>    <span class="hljs-string">&quot;table&quot;</span>,<br>    <span class="hljs-string">&quot;search&quot;</span>,<br>    <span class="hljs-string">&quot;length&quot;</span>,<br>    <span class="hljs-string">&quot;615NtfKnc&quot;</span>,<br>    <span class="hljs-string">&quot;6908400qvcpUL&quot;</span>,<br>    <span class="hljs-string">&quot;exception&quot;</span>,<br>    <span class="hljs-string">&quot;constructor&quot;</span>,<br>    <span class="hljs-string">&quot;apply&quot;</span>,<br>  ];<br>  _0x5936 = <span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) &#123;<br>    <span class="hljs-keyword">return</span> _0x7289e8;<br>  &#125;;<br>  <span class="hljs-keyword">return</span> <span class="hljs-title function_">_0x5936</span>();<br>&#125;<br><span class="hljs-keyword">var</span> _0x27d4e2 = (<span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) &#123;<br>    <span class="hljs-keyword">var</span> _0x494152 = !![];<br>    <span class="hljs-keyword">return</span> <span class="hljs-keyword">function</span> (<span class="hljs-params">_0x2d8431, _0x2bbb6a</span>) &#123;<br>      <span class="hljs-keyword">var</span> _0x1528ad = _0x494152<br>        ? <span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) &#123;<br>            <span class="hljs-keyword">if</span> (_0x2bbb6a) &#123;<br>              <span class="hljs-keyword">var</span> _0x4f8607 = _0x2bbb6a[<span class="hljs-string">&quot;apply&quot;</span>](_0x2d8431, <span class="hljs-variable language_">arguments</span>);<br>              <span class="hljs-keyword">return</span> (_0x2bbb6a = <span class="hljs-literal">null</span>), _0x4f8607;<br>            &#125;<br>          &#125;<br>        : <span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) &#123;&#125;;<br>      <span class="hljs-keyword">return</span> (_0x494152 = ![]), _0x1528ad;<br>    &#125;;<br>  &#125;)(),<br>  _0x194e56 = <span class="hljs-title function_">_0x27d4e2</span>(<span class="hljs-variable language_">this</span>, <span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) &#123;<br>    <span class="hljs-keyword">var</span> _0x2df84e = _0x57e2,<br>      _0x50a5eb;<br>    <span class="hljs-keyword">try</span> &#123;<br>      <span class="hljs-keyword">var</span> _0x458538 = <span class="hljs-title class_">Function</span>(<br>        <span class="hljs-title function_">_0x2df84e</span>(<span class="hljs-number">0x189</span>) + <span class="hljs-string">&quot;&#123;&#125;.constructor(\x22return\x20this\x22)(\x20)&quot;</span> + <span class="hljs-string">&quot;);&quot;</span><br>      );<br>      _0x50a5eb = <span class="hljs-title function_">_0x458538</span>();<br>    &#125; <span class="hljs-keyword">catch</span> (_0x55824d) &#123;<br>      _0x50a5eb = <span class="hljs-variable language_">window</span>;<br>    &#125;<br>    <span class="hljs-keyword">var</span> _0x22e34f = (_0x50a5eb[<span class="hljs-title function_">_0x2df84e</span>(<span class="hljs-number">0x190</span>)] =<br>        _0x50a5eb[<span class="hljs-title function_">_0x2df84e</span>(<span class="hljs-number">0x190</span>)] || &#123;&#125;),<br>      _0x4b7f35 = [<br>        <span class="hljs-title function_">_0x2df84e</span>(<span class="hljs-number">0x180</span>),<br>        <span class="hljs-title function_">_0x2df84e</span>(<span class="hljs-number">0x18a</span>),<br>        <span class="hljs-string">&quot;info&quot;</span>,<br>        <span class="hljs-title function_">_0x2df84e</span>(<span class="hljs-number">0x186</span>),<br>        <span class="hljs-title function_">_0x2df84e</span>(<span class="hljs-number">0x196</span>),<br>        <span class="hljs-title function_">_0x2df84e</span>(<span class="hljs-number">0x191</span>),<br>        <span class="hljs-title function_">_0x2df84e</span>(<span class="hljs-number">0x184</span>),<br>      ];<br>    <span class="hljs-keyword">for</span> (<br>      <span class="hljs-keyword">var</span> _0x24f5c9 = <span class="hljs-number">0x0</span>;<br>      _0x24f5c9 &lt; _0x4b7f35[<span class="hljs-title function_">_0x2df84e</span>(<span class="hljs-number">0x193</span>)];<br>      _0x24f5c9++<br>    ) &#123;<br>      <span class="hljs-keyword">var</span> _0x126b34 =<br>          _0x27d4e2[<span class="hljs-title function_">_0x2df84e</span>(<span class="hljs-number">0x197</span>)][<span class="hljs-title function_">_0x2df84e</span>(<span class="hljs-number">0x18f</span>)][<span class="hljs-title function_">_0x2df84e</span>(<span class="hljs-number">0x18c</span>)](<br>            _0x27d4e2<br>          ),<br>        _0x427a50 = _0x4b7f35[_0x24f5c9],<br>        _0xdec475 = _0x22e34f[_0x427a50] || _0x126b34;<br>      (_0x126b34[<span class="hljs-title function_">_0x2df84e</span>(<span class="hljs-number">0x181</span>)] = _0x27d4e2[<span class="hljs-title function_">_0x2df84e</span>(<span class="hljs-number">0x18c</span>)](_0x27d4e2)),<br>        (_0x126b34[<span class="hljs-title function_">_0x2df84e</span>(<span class="hljs-number">0x17f</span>)] =<br>          _0xdec475[<span class="hljs-string">&quot;toString&quot;</span>][<span class="hljs-title function_">_0x2df84e</span>(<span class="hljs-number">0x18c</span>)](_0xdec475)),<br>        (_0x22e34f[_0x427a50] = _0x126b34);<br>    &#125;<br>  &#125;);<br><span class="hljs-title function_">_0x194e56</span>(), <span class="hljs-variable language_">console</span>[<span class="hljs-title function_">_0x3b8ba1</span>(<span class="hljs-number">0x180</span>)](<span class="hljs-title function_">_0x3b8ba1</span>(<span class="hljs-number">0x17e</span>));<br></code></pre></td></tr></table></figure>
+
+<p>Yet, believe it or not, both of these scripts have the exact same functionality! You can test it yourself: both scripts output</p>
+<figure class="highlight ebnf"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs ebnf"><span class="hljs-attribute">Hello World</span><br></code></pre></td></tr></table></figure>
+
+<p>to the console.</p>
+<h2 id="The-State-of-Javascript-Obfuscation"><a href="#The-State-of-Javascript-Obfuscation" class="headerlink" title="The State of Javascript Obfuscation"></a>The State of Javascript Obfuscation</h2><p>There are many available javascript obfuscators, both closed and open-source. Here’s a small list:</p>
+<p><strong>Open-Source</strong></p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://obfuscator.io/">Obfuscator.io</a></li>
+<li><a target="_blank" rel="noopener" href="http://www.jsfuck.com/">JSFuck</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/alexhorn/defendjs">DefendJS</a></li>
+</ul>
+<p><strong>Closed-Source</strong></p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://jscrambler.com/">Jscrambler</a></li>
+<li><a target="_blank" rel="noopener" href="https://javascriptobfuscator.com/">Javascript Obfuscator</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.preemptive.com/products/jsdefender/">JSDefender</a></li>
+</ul>
+<p>For further reading on the why and how’s of Javascript Obfuscation, I recommend checking out the <a target="_blank" rel="noopener" href="https://blog.jscrambler.com/javascript-obfuscation-the-definitive-guide/">Jscrambler blog posts</a>. For now, though, I’ll shift the topic towards reverse engineering.</p>
+<h1 id="How-is-Obfuscated-Code-Analyzed"><a href="#How-is-Obfuscated-Code-Analyzed" class="headerlink" title="How is Obfuscated Code Analyzed?"></a>How is Obfuscated Code Analyzed?</h1><p>In general, most reverse engineering&#x2F;deobfuscation techniques fall under two categories: <em>static analysis</em> and <em>dynamic analysis</em></p>
+<h2 id="Static-Analysis"><a href="#Static-Analysis" class="headerlink" title="Static Analysis"></a>Static Analysis</h2><p>Static analysis refers to the inspection of source code <strong>without actually executing the program</strong>. An example of static analysis is simplifying source code with Regex.</p>
+<h2 id="Dynamic-Analysis"><a href="#Dynamic-Analysis" class="headerlink" title="Dynamic Analysis"></a>Dynamic Analysis</h2><p>Dynamic analysis refers to the testing and analysis of an application <strong>during run time&#x2F;evaluation</strong>. An example of dynamic analysis is using a debugger.</p>
+<h2 id="Static-vs-Dynamic-Analysis-Use-Cases"><a href="#Static-vs-Dynamic-Analysis-Use-Cases" class="headerlink" title="Static vs. Dynamic Analysis Use-Cases"></a>Static vs. Dynamic Analysis Use-Cases</h2><p>Since static analysis does not execute code, it makes it ideal for analyzing untrusted scripts. For example, when analyzing malware, you may want to use static analysis to avoid infection of your computer.</p>
+<p>Dynamic analysis is used when a script is known to be safe to run. Debuggers can be powerful tools for reverse engineering, as they allow you to view the state of the program at different points in the runtime. Additionally, dynamic analysis can be (and often is) used for malware analysis too, but only after taking proper security precautions (i.e sandboxing).</p>
+<p>Static and dynamic analysis are powerful when used together. For example, debugging a script containing a lot of junk code can be difficult. Or, the code may contain anti-debugging protection (e.g. <a target="_blank" rel="noopener" href="https://x-c3ll.github.io/posts/javascript-antidebugging/">infinite debugger loops</a>). In this case, someone may first use static inspection of source code to simplify the source code, then proceed with dynamic analysis using the modified source.</p>
+<h1 id="Introducing-Babel"><a href="#Introducing-Babel" class="headerlink" title="Introducing Babel"></a>Introducing Babel</h1><p><a target="_blank" rel="noopener" href="https://babeljs.io/">Babel</a> is a Javascript to Javascript compiler. The functionalities included with the Babel framework make it exceptionally useful for any javascript deobfuscation use case, since you can use it for static analysis and dynamic analysis!</p>
+<p>Let me give a short explanation of how it works:</p>
+<p>Javascript is an interpreted programming language. For Javascript to be interpreted by an engine (e.g. Chrome’s V8 engine or Firefox’s Spidermonkey) into machine code, it is first parsed into an <strong><em>Abstract Syntax Tree</em></strong> (AST). After that, the AST is used to generate machine-readable byte-code, which is then executed.</p>
+<p>Babel works in a similar fashion. It takes in Javascript code, parses it into an AST, then outputs javascript based on that AST.</p>
+<p>Okay, sounds interesting. But what even is an AST?</p>
+<h2 id="Definition-Abstract-Syntax-Tree"><a href="#Definition-Abstract-Syntax-Tree" class="headerlink" title="Definition: Abstract Syntax Tree"></a>Definition: Abstract Syntax Tree</h2><p>An <strong><em>Abstract Syntax Tree</em></strong> (AST) is a tree-like structure that hierarchically represents the syntax of a piece of source code. Each node of the tree represents the occurrence of a predefined structure in the source code. Any piece of source code, from any programming language, can be represented as an AST.</p>
+<p>Note: <em>Even though the concepts behind an AST are universal, different programming languages may have a different AST specifications based on their capabilities.</em></p>
+<p>Some practical uses of ASTs include:</p>
+<ul>
+<li>Validating Code</li>
+<li>Formatting Code</li>
+<li>Syntax Highlighting</li>
+</ul>
+<p>And, of course, due to the more verbose nature of ASTs relative to plaintext source code, it makes them a great tool for reverse engineering 😁</p>
+<p>Unfortunately, I won’t be giving a more in-depth definition of ASTs. This is for the sake of time, and since that’d be more akin to the subject of compiler theory than deobfuscation. I’d prefer to get right into explaining the usage of Babel as quickly as possible. However, I’ll leave you with some resources to read up more about ASTs (which probably offer a better explanation than I could muster anyway):</p>
+<p><a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Abstract_syntax_tree">Wikipedia - Abstract Syntax Trees</a><br><a target="_blank" rel="noopener" href="https://blog.sessionstack.com/how-javascript-works-parsing-abstract-syntax-trees-asts-5-tips-on-how-to-minimize-parse-time-abfcf7e8a0c8">How JavaScript works: Parsing, Abstract Syntax Trees (ASTs) + 5 tips on how to minimize parse time</a></p>
+<h2 id="How-Babel-Works"><a href="#How-Babel-Works" class="headerlink" title="How Babel Works"></a>How Babel Works</h2><p>Babel can be installed the same way as any other NodeJS package. For our purposes, the following packages are relevant:</p>
+<p><code>@babel/core</code> This encapsulates the entire Babel compiler API.<br><code>@babel/parser</code> The module Babel uses to parse Javascript source code and generate an AST<br><code>@babel/traverse</code> The module that allows for traversing and modifying the generated AST<br><code>@babel/generator</code> The module Babel uses to generate Javascript code from the AST.<br><code>@babel/types</code> A module for verifying and generating node types as defined by the Babel AST implementation.</p>
+<p>When compiling code, Babel goes through three main phases:</p>
+<ol>
+<li><strong>Parsing</strong> &#x3D;&gt; Uses <code>@babel/parser</code> API</li>
+<li><strong>Transforming</strong> &#x3D;&gt; Uses <code>@babel/traverse</code> API</li>
+<li><strong>Code Generation</strong> &#x3D;&gt; Uses <code>@babel/generator</code> API</li>
+</ol>
+<p>I’ll give you a (very) short summary of each of these phases:</p>
+<h3 id="Stages-of-Babel"><a href="#Stages-of-Babel" class="headerlink" title="Stages of Babel"></a>Stages of Babel</h3><h4 id="Phase-1-Parsing"><a href="#Phase-1-Parsing" class="headerlink" title="Phase #1: Parsing"></a>Phase #1: Parsing</h4><p>During this phase, Babel takes source code as an input and outputs an AST. Two stages of parsing are <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Lexical_analysis">Lexical Analysis</a> and <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Parsing">Syntactic Analysis</a>.</p>
+<p>To parse code into an AST, we make use of <code>@babel/parser</code>. The following is an example of parsing code from a file, <code>sourcecode.js</code>:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-keyword">const</span> parser = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/parser&quot;</span>);<br><span class="hljs-keyword">const</span> code = fs.<span class="hljs-title function_">readFileSync</span>(<span class="hljs-string">&quot;sourcecode.js&quot;</span>, <span class="hljs-string">&quot;utf-8&quot;</span>);<br><span class="hljs-keyword">let</span> ast = parser.<span class="hljs-title function_">parse</span>(code);<br></code></pre></td></tr></table></figure>
+
+<p>You can read more about the parsing phase here:<br><a target="_blank" rel="noopener" href="https://github.com/jamiebuilds/babel-handbook/blob/master/translations/en/plugin-handbook.md#parse">Babel Plugin Handbook - Parsing</a><br><a target="_blank" rel="noopener" href="https://babeljs.io/docs/en/babel-parser">Babel Docs - @babel&#x2F;parser</a></p>
+<h4 id="Phase-2-Transforming"><a href="#Phase-2-Transforming" class="headerlink" title="Phase 2: Transforming"></a>Phase 2: Transforming</h4><p>The transformation phase is the most important phase. During this phase, Babel takes the generated AST and traverses it to add, update, or remove nodes. All the deobfuscation transformations we write are executed in this stage. This stage will be the main focus of future tutorials.</p>
+<h4 id="Phase-3-Code-Generation"><a href="#Phase-3-Code-Generation" class="headerlink" title="Phase 3: Code Generation"></a>Phase 3: Code Generation</h4><p>The code generation phase takes in the final AST and converts it back to executable Javascript.</p>
+<h1 id="The-Babel-Workflow"><a href="#The-Babel-Workflow" class="headerlink" title="The Babel Workflow"></a>The Babel Workflow</h1><p>This section will not discuss any practical deobfuscation techniques. It will only detail the general process of analyzing source code. I’ll be using an unobfuscated piece of code as an example.</p>
+<p>When deobfuscating Javascript, I typically follow this workflow:</p>
+<ol>
+<li>Visualization</li>
+<li>Analysis</li>
+<li>Writing the Deobfuscator</li>
+</ol>
+<h2 id="Phase-1-Visualization-with-AST-Explorer"><a href="#Phase-1-Visualization-with-AST-Explorer" class="headerlink" title="Phase 1: Visualization with AST Explorer"></a>Phase 1: Visualization with AST Explorer</h2><p>Before we can write any plugins for a deobfuscator, we should always first visualize the code’s AST. To help us with that, we will leverage an online tool: <a target="_blank" rel="noopener" href="https://astexplorer.net/">AstExplorer.net</a>.</p>
+<p>AST Explorer serves as an interactive AST playground. It allows you to choose a programming language and parser. In this case, we would select Javascript as the programming language and <code>@babel/parser</code> as the parser. After that, we can paste some source code into the window and inspect the generated AST on the right-hand side.</p>
+<p>As an example, I’ll use this snippet:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-keyword">function</span> <span class="hljs-title function_">operation</span>(<span class="hljs-params">arg1, arg2</span>) &#123;<br>  <span class="hljs-keyword">let</span> step1 = arg1 + arg2;<br>&#125;<br><br><span class="hljs-keyword">let</span> foo = <span class="hljs-title function_">operation</span>(<span class="hljs-number">6</span>, <span class="hljs-number">8</span>);<br></code></pre></td></tr></table></figure>
+
+<p><img src="/2022/05/21/Deobfuscating-Javascript-via-AST-An-Introduction-to-Babel/intro1.PNG" srcset="/img/loading.gif" lazyload alt="Result from pasting the code snippet in AST Explorer"></p>
+<p>The generated AST looks like this:</p>
+<details>
+  <summary> Click to Expand</summary>
+
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br><span class="line">259</span><br><span class="line">260</span><br><span class="line">261</span><br><span class="line">262</span><br><span class="line">263</span><br><span class="line">264</span><br><span class="line">265</span><br><span class="line">266</span><br><span class="line">267</span><br><span class="line">268</span><br><span class="line">269</span><br><span class="line">270</span><br><span class="line">271</span><br><span class="line">272</span><br><span class="line">273</span><br><span class="line">274</span><br><span class="line">275</span><br><span class="line">276</span><br><span class="line">277</span><br><span class="line">278</span><br><span class="line">279</span><br><span class="line">280</span><br><span class="line">281</span><br><span class="line">282</span><br><span class="line">283</span><br><span class="line">284</span><br><span class="line">285</span><br><span class="line">286</span><br><span class="line">287</span><br><span class="line">288</span><br><span class="line">289</span><br><span class="line">290</span><br><span class="line">291</span><br><span class="line">292</span><br><span class="line">293</span><br><span class="line">294</span><br><span class="line">295</span><br><span class="line">296</span><br><span class="line">297</span><br><span class="line">298</span><br><span class="line">299</span><br><span class="line">300</span><br><span class="line">301</span><br><span class="line">302</span><br><span class="line">303</span><br><span class="line">304</span><br><span class="line">305</span><br><span class="line">306</span><br><span class="line">307</span><br><span class="line">308</span><br><span class="line">309</span><br><span class="line">310</span><br><span class="line">311</span><br><span class="line">312</span><br><span class="line">313</span><br><span class="line">314</span><br></pre></td><td class="code"><pre><code class="hljs javascript">&#123;<br>  <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;File&quot;</span>,<br>  <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">0</span>,<br>  <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">78</span>,<br>  <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>    <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>      <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">1</span>,<br>      <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">0</span><br>    &#125;,<br>    <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>      <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">5</span>,<br>      <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">24</span><br>    &#125;<br>  &#125;,<br>  <span class="hljs-string">&quot;errors&quot;</span>: [],<br>  <span class="hljs-string">&quot;program&quot;</span>: &#123;<br>    <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;Program&quot;</span>,<br>    <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">0</span>,<br>    <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">78</span>,<br>    <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>      <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>        <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">1</span>,<br>        <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">0</span><br>      &#125;,<br>      <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>        <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">5</span>,<br>        <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">24</span><br>      &#125;<br>    &#125;,<br>    <span class="hljs-string">&quot;sourceType&quot;</span>: <span class="hljs-string">&quot;module&quot;</span>,<br>    <span class="hljs-string">&quot;interpreter&quot;</span>: <span class="hljs-literal">null</span>,<br>    <span class="hljs-string">&quot;body&quot;</span>: [<br>      &#123;<br>        <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;FunctionDeclaration&quot;</span>,<br>        <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">0</span>,<br>        <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">52</span>,<br>        <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>          <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>            <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">1</span>,<br>            <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">0</span><br>          &#125;,<br>          <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>            <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">3</span>,<br>            <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">1</span><br>          &#125;<br>        &#125;,<br>        <span class="hljs-string">&quot;id&quot;</span>: &#123;<br>          <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;Identifier&quot;</span>,<br>          <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">9</span>,<br>          <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">18</span>,<br>          <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>            <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>              <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">1</span>,<br>              <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">9</span><br>            &#125;,<br>            <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>              <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">1</span>,<br>              <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">18</span><br>            &#125;,<br>            <span class="hljs-string">&quot;identifierName&quot;</span>: <span class="hljs-string">&quot;operation&quot;</span><br>          &#125;,<br>          <span class="hljs-string">&quot;name&quot;</span>: <span class="hljs-string">&quot;operation&quot;</span><br>        &#125;,<br>        <span class="hljs-string">&quot;generator&quot;</span>: <span class="hljs-literal">false</span>,<br>        <span class="hljs-string">&quot;async&quot;</span>: <span class="hljs-literal">false</span>,<br>        <span class="hljs-string">&quot;params&quot;</span>: [<br>          &#123;<br>            <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;Identifier&quot;</span>,<br>            <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">19</span>,<br>            <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">23</span>,<br>            <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>              <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>                <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">1</span>,<br>                <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">19</span><br>              &#125;,<br>              <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>                <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">1</span>,<br>                <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">23</span><br>              &#125;,<br>              <span class="hljs-string">&quot;identifierName&quot;</span>: <span class="hljs-string">&quot;arg1&quot;</span><br>            &#125;,<br>            <span class="hljs-string">&quot;name&quot;</span>: <span class="hljs-string">&quot;arg1&quot;</span><br>          &#125;,<br>          &#123;<br>            <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;Identifier&quot;</span>,<br>            <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">24</span>,<br>            <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">28</span>,<br>            <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>              <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>                <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">1</span>,<br>                <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">24</span><br>              &#125;,<br>              <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>                <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">1</span>,<br>                <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">28</span><br>              &#125;,<br>              <span class="hljs-string">&quot;identifierName&quot;</span>: <span class="hljs-string">&quot;arg2&quot;</span><br>            &#125;,<br>            <span class="hljs-string">&quot;name&quot;</span>: <span class="hljs-string">&quot;arg2&quot;</span><br>          &#125;<br>        ],<br>        <span class="hljs-string">&quot;body&quot;</span>: &#123;<br>          <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;BlockStatement&quot;</span>,<br>          <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">29</span>,<br>          <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">52</span>,<br>          <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>            <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>              <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">1</span>,<br>              <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">29</span><br>            &#125;,<br>            <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>              <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">3</span>,<br>              <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">1</span><br>            &#125;<br>          &#125;,<br>          <span class="hljs-string">&quot;body&quot;</span>: [<br>            &#123;<br>              <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;ReturnStatement&quot;</span>,<br>              <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">32</span>,<br>              <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">50</span>,<br>              <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>                <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>                  <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">2</span>,<br>                  <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">1</span><br>                &#125;,<br>                <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>                  <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">2</span>,<br>                  <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">19</span><br>                &#125;<br>              &#125;,<br>              <span class="hljs-string">&quot;argument&quot;</span>: &#123;<br>                <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;BinaryExpression&quot;</span>,<br>                <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">39</span>,<br>                <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">50</span>,<br>                <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>                  <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>                    <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">2</span>,<br>                    <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">8</span><br>                  &#125;,<br>                  <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>                    <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">2</span>,<br>                    <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">19</span><br>                  &#125;<br>                &#125;,<br>                <span class="hljs-string">&quot;left&quot;</span>: &#123;<br>                  <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;Identifier&quot;</span>,<br>                  <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">39</span>,<br>                  <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">43</span>,<br>                  <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>                    <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>                      <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">2</span>,<br>                      <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">8</span><br>                    &#125;,<br>                    <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>                      <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">2</span>,<br>                      <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">12</span><br>                    &#125;,<br>                    <span class="hljs-string">&quot;identifierName&quot;</span>: <span class="hljs-string">&quot;arg1&quot;</span><br>                  &#125;,<br>                  <span class="hljs-string">&quot;name&quot;</span>: <span class="hljs-string">&quot;arg1&quot;</span><br>                &#125;,<br>                <span class="hljs-string">&quot;operator&quot;</span>: <span class="hljs-string">&quot;+&quot;</span>,<br>                <span class="hljs-string">&quot;right&quot;</span>: &#123;<br>                  <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;Identifier&quot;</span>,<br>                  <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">46</span>,<br>                  <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">50</span>,<br>                  <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>                    <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>                      <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">2</span>,<br>                      <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">15</span><br>                    &#125;,<br>                    <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>                      <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">2</span>,<br>                      <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">19</span><br>                    &#125;,<br>                    <span class="hljs-string">&quot;identifierName&quot;</span>: <span class="hljs-string">&quot;arg2&quot;</span><br>                  &#125;,<br>                  <span class="hljs-string">&quot;name&quot;</span>: <span class="hljs-string">&quot;arg2&quot;</span><br>                &#125;<br>              &#125;<br>            &#125;<br>          ],<br>          <span class="hljs-string">&quot;directives&quot;</span>: []<br>        &#125;<br>      &#125;,<br>      &#123;<br>        <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;VariableDeclaration&quot;</span>,<br>        <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">54</span>,<br>        <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">78</span>,<br>        <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>          <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>            <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">5</span>,<br>            <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">0</span><br>          &#125;,<br>          <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>            <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">5</span>,<br>            <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">24</span><br>          &#125;<br>        &#125;,<br>        <span class="hljs-string">&quot;declarations&quot;</span>: [<br>          &#123;<br>            <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;VariableDeclarator&quot;</span>,<br>            <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">58</span>,<br>            <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">78</span>,<br>            <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>              <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>                <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">5</span>,<br>                <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">4</span><br>              &#125;,<br>              <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>                <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">5</span>,<br>                <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">24</span><br>              &#125;<br>            &#125;,<br>            <span class="hljs-string">&quot;id&quot;</span>: &#123;<br>              <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;Identifier&quot;</span>,<br>              <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">58</span>,<br>              <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">61</span>,<br>              <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>                <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>                  <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">5</span>,<br>                  <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">4</span><br>                &#125;,<br>                <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>                  <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">5</span>,<br>                  <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">7</span><br>                &#125;,<br>                <span class="hljs-string">&quot;identifierName&quot;</span>: <span class="hljs-string">&quot;foo&quot;</span><br>              &#125;,<br>              <span class="hljs-string">&quot;name&quot;</span>: <span class="hljs-string">&quot;foo&quot;</span><br>            &#125;,<br>            <span class="hljs-string">&quot;init&quot;</span>: &#123;<br>              <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;CallExpression&quot;</span>,<br>              <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">64</span>,<br>              <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">78</span>,<br>              <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>                <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>                  <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">5</span>,<br>                  <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">10</span><br>                &#125;,<br>                <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>                  <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">5</span>,<br>                  <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">24</span><br>                &#125;<br>              &#125;,<br>              <span class="hljs-string">&quot;callee&quot;</span>: &#123;<br>                <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;Identifier&quot;</span>,<br>                <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">64</span>,<br>                <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">73</span>,<br>                <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>                  <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>                    <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">5</span>,<br>                    <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">10</span><br>                  &#125;,<br>                  <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>                    <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">5</span>,<br>                    <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">19</span><br>                  &#125;,<br>                  <span class="hljs-string">&quot;identifierName&quot;</span>: <span class="hljs-string">&quot;operation&quot;</span><br>                &#125;,<br>                <span class="hljs-string">&quot;name&quot;</span>: <span class="hljs-string">&quot;operation&quot;</span><br>              &#125;,<br>              <span class="hljs-string">&quot;arguments&quot;</span>: [<br>                &#123;<br>                  <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;NumericLiteral&quot;</span>,<br>                  <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">74</span>,<br>                  <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">75</span>,<br>                  <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>                    <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>                      <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">5</span>,<br>                      <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">20</span><br>                    &#125;,<br>                    <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>                      <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">5</span>,<br>                      <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">21</span><br>                    &#125;<br>                  &#125;,<br>                  <span class="hljs-string">&quot;extra&quot;</span>: &#123;<br>                    <span class="hljs-string">&quot;rawValue&quot;</span>: <span class="hljs-number">6</span>,<br>                    <span class="hljs-string">&quot;raw&quot;</span>: <span class="hljs-string">&quot;6&quot;</span><br>                  &#125;,<br>                  <span class="hljs-string">&quot;value&quot;</span>: <span class="hljs-number">6</span><br>                &#125;,<br>                &#123;<br>                  <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;NumericLiteral&quot;</span>,<br>                  <span class="hljs-string">&quot;start&quot;</span>: <span class="hljs-number">76</span>,<br>                  <span class="hljs-string">&quot;end&quot;</span>: <span class="hljs-number">77</span>,<br>                  <span class="hljs-string">&quot;loc&quot;</span>: &#123;<br>                    <span class="hljs-string">&quot;start&quot;</span>: &#123;<br>                      <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">5</span>,<br>                      <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">22</span><br>                    &#125;,<br>                    <span class="hljs-string">&quot;end&quot;</span>: &#123;<br>                      <span class="hljs-string">&quot;line&quot;</span>: <span class="hljs-number">5</span>,<br>                      <span class="hljs-string">&quot;column&quot;</span>: <span class="hljs-number">23</span><br>                    &#125;<br>                  &#125;,<br>                  <span class="hljs-string">&quot;extra&quot;</span>: &#123;<br>                    <span class="hljs-string">&quot;rawValue&quot;</span>: <span class="hljs-number">8</span>,<br>                    <span class="hljs-string">&quot;raw&quot;</span>: <span class="hljs-string">&quot;8&quot;</span><br>                  &#125;,<br>                  <span class="hljs-string">&quot;value&quot;</span>: <span class="hljs-number">8</span><br>                &#125;<br>              ]<br>            &#125;<br>          &#125;<br>        ],<br>        <span class="hljs-string">&quot;kind&quot;</span>: <span class="hljs-string">&quot;let&quot;</span><br>      &#125;<br>    ],<br>    <span class="hljs-string">&quot;directives&quot;</span>: []<br>  &#125;,<br>  <span class="hljs-string">&quot;comments&quot;</span>: []<br>&#125;<br></code></pre></td></tr></table></figure>
+
+</details>
+
+<p>We can observe that even for this small little program, the AST representation is incredibly verbose. It’s composed of different types of nodes (<code>FunctionDeclaration</code>s, <code>ExpressionStatement</code>s, <code>Identifier</code>s, <code>CallExpression</code>s, etc.), and many nodes also have a sub node. To transform the AST, we’ll be making use of the Babel traverse package to recursively traverse the tree and modify nodes.</p>
+<h2 id="Phase-2-Coming-Up-With-The-Transformation-Logic-x2F-Pseudo-code"><a href="#Phase-2-Coming-Up-With-The-Transformation-Logic-x2F-Pseudo-code" class="headerlink" title="Phase 2: Coming Up With The Transformation Logic&#x2F;Pseudo-code"></a>Phase 2: Coming Up With The Transformation Logic&#x2F;Pseudo-code</h2><p>This isn’t an obfuscated file, but we’ll still write a plugin to demonstrate the traverse package’s functionality.</p>
+<p>Let’s assign ourselves an arbitrary goal of transforming the script to replace all occurrences of arithmetic addition operators (<code>+</code>) with arithmetic multiplication operators (<code>*</code>). That is, the final script should look like this:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-keyword">function</span> <span class="hljs-title function_">operation</span>(<span class="hljs-params">arg1, arg2</span>) &#123;<br>  <span class="hljs-keyword">return</span> arg1 * arg2;<br>&#125;<br><br><span class="hljs-keyword">let</span> foo = <span class="hljs-title function_">operation</span>(<span class="hljs-number">6</span>, <span class="hljs-number">8</span>);<br></code></pre></td></tr></table></figure>
+
+<h3 id="Determining-the-Target-Node-Type-s"><a href="#Determining-the-Target-Node-Type-s" class="headerlink" title="Determining the Target Node Type(s)"></a>Determining the Target Node Type(s)</h3><p>First, we need to determine what our node type(s) of interest are. If we highlight a section of the code, AST explorer will automatically expand that node on the right-hand side. In our case, we want to focus on the <code>arg1 + arg2</code> operation. After highlighting that piece of code, we’ll see this:</p>
+<p><img src="/2022/05/21/Deobfuscating-Javascript-via-AST-An-Introduction-to-Babel/intro2.png" srcset="/img/loading.gif" lazyload alt="A closer look at the nodes of interest"></p>
+<p>We can see that <code>arg1 + arg2</code> has been parsed into a <code>BinaryExpression</code> node. This node has the following properties:</p>
+<ul>
+<li><code>type</code> stores the node’s type, in this case: <code>BinaryExpression</code></li>
+<li><code>left</code> stores the information for the left side of the expression, in this case: the <code>arg1</code> identifier.</li>
+<li><code>right</code> stores the information for the right side of the expression, in this case: the <code>arg2</code> identifier.</li>
+<li><code>operator</code> stores the operator, in this case: <code>+</code>.</li>
+</ul>
+<p>Our goal is to replace all <code>+</code> operators in the script with a <code>*</code> operator, so it makes sense that our node type of interest is a <code>BinaryExpression</code>.</p>
+<p>Now that we have our target node type, we need to figure out how we’ll transform them</p>
+<h3 id="Transformation-Logic"><a href="#Transformation-Logic" class="headerlink" title="Transformation Logic"></a>Transformation Logic</h3><p>To reiterate: we know that we’re looking for <code>BinaryExpression</code>s. Each <code>BinaryExpression</code> has a property, <code>operator</code>. We want to edit this property to <code>*</code> if it is a <code>+</code>.</p>
+<p>The logical process would therefore look like this:</p>
+<ol>
+<li>Parse the code to generate an AST.</li>
+<li>Traverse the AST in search of <code>BinaryExpression</code>s.</li>
+<li>If one is encountered, check that its operator is currently equal to <code>+</code>. If it isn’t, skip that node.</li>
+<li>If the operator is equal to <code>+</code>, set the operator to <code>*</code>.</li>
+</ol>
+<p>Now that we understand the logic, we can write it as code</p>
+<h2 id="Phase-3-Writing-the-Transformation-Code"><a href="#Phase-3-Writing-the-Transformation-Code" class="headerlink" title="Phase 3: Writing the Transformation Code"></a>Phase 3: Writing the Transformation Code</h2><p>To parse the tree, we will use the <code>@babel/parser</code> package as previously demonstrated. To traverse the generated AST and modify the nodes, we’ll make use of <code>@babel/traverse</code>.</p>
+<p>To target a specific node type during traversal, we’ll use a visitor[<a target="_blank" rel="noopener" href="https://github.com/jamiebuilds/babel-handbook/blob/master/translations/en/plugin-handbook.md#visitors]">https://github.com/jamiebuilds/babel-handbook/blob/master/translations/en/plugin-handbook.md#visitors]</a>.</p>
+<p>From the Babel Plugin Handbook:</p>
+<blockquote>
+<p>Visitors are a pattern used in AST traversal across languages. Simply put they are an object with methods defined for accepting particular node types in a tree.</p>
+</blockquote>
+<p>To target nodes of type <code>BinaryExpression</code>, our visitor would like like this:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-keyword">const</span> changeOperatorVisitor = &#123;<br>  <span class="hljs-title class_">BinaryExpression</span>(path) &#123;<br>    <span class="hljs-comment">// transformations here ...</span><br>  &#125;,<br>&#125;;<br></code></pre></td></tr></table></figure>
+
+<p>Now, every time a <code>BinaryExpression</code> is encountered, the <code>BinaryExpression(path)</code> method will be called.</p>
+<p>Inside the <code>BinaryExpression(path)</code> method of our visitor, we can add code for any checks and transformations.</p>
+<p>Each visitor method takes in a parameter, <code>path</code>, which holds the path to the node being visited. To access the actual properties of the node, we must use <code>path.node</code>.</p>
+<p>Our first step in our transformation would be to check that the <code>operator</code> property of the node is a <code>+</code>. We can do that like this:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-keyword">const</span> changeOperatorVisitor = &#123;<br>  <span class="hljs-title class_">BinaryExpression</span>(path) &#123;<br>    <span class="hljs-keyword">if</span> (path.<span class="hljs-property">node</span>.<span class="hljs-property">operator</span> == <span class="hljs-string">&quot;+&quot;</span>) &#123;<br>      <span class="hljs-comment">// continue with transformations...</span><br>    &#125; <span class="hljs-keyword">else</span> &#123;<br>      <span class="hljs-keyword">return</span>; <span class="hljs-comment">// Skip the node</span><br>    &#125;<br>  &#125;,<br>&#125;;<br></code></pre></td></tr></table></figure>
+
+<p>If it is a <code>+</code>, we can set it to <code>*</code>.</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-keyword">const</span> changeOperatorVisitor = &#123;<br>  <span class="hljs-title class_">BinaryExpression</span>(path) &#123;<br>    <span class="hljs-comment">// Check if operator is +</span><br>    <span class="hljs-keyword">if</span> (path.<span class="hljs-property">node</span>.<span class="hljs-property">operator</span> == <span class="hljs-string">&quot;+&quot;</span>) &#123;<br>      <span class="hljs-comment">// Set operator as *</span><br>      path.<span class="hljs-property">node</span>.<span class="hljs-property">operator</span> = <span class="hljs-string">&quot;*&quot;</span>;<br>    &#125; <span class="hljs-keyword">else</span> &#123;<br>      <span class="hljs-keyword">return</span>; <span class="hljs-comment">// Skip the node</span><br>    &#125;<br>  &#125;,<br>&#125;;<br></code></pre></td></tr></table></figure>
+
+<p>And our visitor is complete! Now we just need to call it on the generated AST. But first, let’s generate the AST:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-keyword">const</span> parser = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/parser&quot;</span>);<br><span class="hljs-keyword">const</span> generate = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/generator&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> traverse = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/traverse&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> types = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/types&quot;</span>);<br><span class="hljs-comment">// Set the source code</span><br><span class="hljs-keyword">const</span> code = <span class="hljs-string">`</span><br><span class="hljs-string">function operation(arg1, arg2) &#123;</span><br><span class="hljs-string">  return arg1 * arg2;</span><br><span class="hljs-string">&#125;</span><br><span class="hljs-string">let foo = operation(6, 8);</span><br><span class="hljs-string">`</span>;<br><span class="hljs-comment">// Parse the source code into an AST</span><br><span class="hljs-keyword">let</span> ast = parser.<span class="hljs-title function_">parse</span>(code);<br></code></pre></td></tr></table></figure>
+
+<p>After that, we can paste our visitor into the source code. To traverse the AST using the visitor, we’ll use the <code>traverse</code> method from the <code>@babel/traverse</code> package. That would look like this:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-keyword">const</span> parser = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/parser&quot;</span>);<br><span class="hljs-keyword">const</span> generate = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/generator&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> traverse = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/traverse&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> types = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/types&quot;</span>);<br><span class="hljs-comment">// Set the source code</span><br><span class="hljs-keyword">const</span> code = <span class="hljs-string">`</span><br><span class="hljs-string">function operation(arg1, arg2) &#123;</span><br><span class="hljs-string">  return arg1 * arg2;</span><br><span class="hljs-string">&#125;</span><br><span class="hljs-string">let foo = operation(6, 8);</span><br><span class="hljs-string">`</span>;<br><span class="hljs-comment">// Parse the source code into an AST</span><br><span class="hljs-keyword">let</span> ast = parser.<span class="hljs-title function_">parse</span>(code);<br><br><span class="hljs-comment">// Visitor for modifying operator of BinaryExpression</span><br><span class="hljs-keyword">const</span> changeOperatorVisitor = &#123;<br>  <span class="hljs-title class_">BinaryExpression</span>(path) &#123;<br>    <span class="hljs-comment">// Check if operator is +</span><br>    <span class="hljs-keyword">if</span> (path.<span class="hljs-property">node</span>.<span class="hljs-property">operator</span> == <span class="hljs-string">&quot;+&quot;</span>) &#123;<br>      <span class="hljs-comment">// Set operator as *</span><br>      path.<span class="hljs-property">node</span>.<span class="hljs-property">operator</span> = <span class="hljs-string">&quot;*&quot;</span>;<br>    &#125; <span class="hljs-keyword">else</span> &#123;<br>      <span class="hljs-keyword">return</span>; <span class="hljs-comment">// Skip the node</span><br>    &#125;<br>  &#125;,<br>&#125;;<br><br><span class="hljs-title function_">traverse</span>(ast, changeOperatorVisitor);<br></code></pre></td></tr></table></figure>
+
+<p>Finally, we’ll use the <code>generate</code> method from the <code>@babel/generator</code> package to generate the final code from the modified AST. We can also output the resulting code to a file, but I’ll just log it to the console for simplicity.</p>
+<p>So, our final transformation script looks like this:</p>
+<h2 id="Babel-Transformation-Script"><a href="#Babel-Transformation-Script" class="headerlink" title="Babel Transformation Script"></a>Babel Transformation Script</h2><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-keyword">const</span> parser = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/parser&quot;</span>);<br><span class="hljs-keyword">const</span> generate = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/generator&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> traverse = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/traverse&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> types = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/types&quot;</span>);<br><span class="hljs-comment">// Set the source code</span><br><span class="hljs-keyword">const</span> code = <span class="hljs-string">`</span><br><span class="hljs-string">function operation(arg1, arg2) &#123;</span><br><span class="hljs-string">  return arg1 * arg2;</span><br><span class="hljs-string">&#125;</span><br><span class="hljs-string">let foo = operation(6, 8);</span><br><span class="hljs-string">`</span>;<br><span class="hljs-comment">// Parse the source code into an AST</span><br><span class="hljs-keyword">let</span> ast = parser.<span class="hljs-title function_">parse</span>(code);<br><br><span class="hljs-comment">// Visitor for modifying operator of BinaryExpression</span><br><span class="hljs-keyword">const</span> changeOperatorVisitor = &#123;<br>  <span class="hljs-title class_">BinaryExpression</span>(path) &#123;<br>    <span class="hljs-comment">// Check if operator is +</span><br>    <span class="hljs-keyword">if</span> (path.<span class="hljs-property">node</span>.<span class="hljs-property">operator</span> == <span class="hljs-string">&quot;+&quot;</span>) &#123;<br>      <span class="hljs-comment">// Set operator as *</span><br>      path.<span class="hljs-property">node</span>.<span class="hljs-property">operator</span> = <span class="hljs-string">&quot;*&quot;</span>;<br>    &#125; <span class="hljs-keyword">else</span> &#123;<br>      <span class="hljs-keyword">return</span>; <span class="hljs-comment">// Skip the node</span><br>    &#125;<br>  &#125;,<br>&#125;;<br><br><span class="hljs-title function_">traverse</span>(ast, changeOperatorVisitor);<br><br><span class="hljs-keyword">let</span> finalCode = <span class="hljs-title function_">generate</span>(ast).<span class="hljs-property">code</span>;<br><br><span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(finalCode);<br></code></pre></td></tr></table></figure>
+
+<p>This will output the following to the console:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-keyword">function</span> <span class="hljs-title function_">operation</span>(<span class="hljs-params">arg1, arg2</span>) &#123;<br>  <span class="hljs-keyword">return</span> arg1 * arg2;<br>&#125;<br><br><span class="hljs-keyword">let</span> foo = <span class="hljs-title function_">operation</span>(<span class="hljs-number">6</span>, <span class="hljs-number">8</span>);<br></code></pre></td></tr></table></figure>
+
+<p>And we can see that the code has been successfully transformed to replace <code>+</code> operators with <code>*</code> operators!</p>
+<h1 id="Why-use-Babel-for-Deobfuscation"><a href="#Why-use-Babel-for-Deobfuscation" class="headerlink" title="Why use Babel for Deobfuscation?"></a>Why use Babel for Deobfuscation?</h1><p>So, why should we use Babel as a deobfuscation tool as opposed to other static analysis tools like Regex?</p>
+<p>Here are a few reasons:</p>
+<ol>
+<li><p><strong>Ast is less error-prone.</strong></p>
+<ul>
+<li>For large chunks of code, writing transformations can become incredibly tedious due to the edge cases. For example, it’s difficult to account for the scope and state of variables when using regex. For example, two different variables can share the same name if they’re in different scopes:</li>
+</ul>
+</li>
+</ol>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-comment">//Scope 1:</span><br>&#123;<br>  <span class="hljs-keyword">let</span> foo = <span class="hljs-number">123</span>;<br>  &#123;<br>    <span class="hljs-keyword">let</span> foo = <span class="hljs-number">321</span>;<br>    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(foo);<br>  &#125;<br>  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(foo);<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>Eventually, regular expressions will become very convoluted when you have to account for edge cases; whether it be scope or tiny variations in syntax. Babel doesn’t have this problem, as you can use built-in functionality to make transformations with respect to scope and state.</p>
+<ol start="2">
+<li><p><strong>The Babel API has a lot of useful features.</strong></p>
+<p>Here are a few useful things you can do with the built-in Babel API:</p>
+<ul>
+<li>Easily target certain nodes</li>
+<li>Handle scope when renaming&#x2F;replacing variables</li>
+<li>Easily get initial values and references of variables</li>
+<li>Node validation, generation, cloning, replacement, removal</li>
+<li>Find paths to ancestor and descendant nodes based on test conditions</li>
+<li>Containers&#x2F;Lists: Check if a node is in a container&#x2F;list, and get all of its siblings</li>
+</ul>
+</li>
+<li><p><strong>Good for static and dynamic analysis</strong></p>
+<ul>
+<li>Inherently, parsing the code into an AST and applying transformations will not execute the code. But Babel also has the functionality to evaluate nodes (ex. BinaryExpressions) and return their actual value. Babel can also generate code from nodes, which can be evaluated with <code>eval</code> or the NodeJS VM.</li>
+</ul>
+</li>
+</ol>
+<h1 id="Conclusion-Additional-Resources"><a href="#Conclusion-Additional-Resources" class="headerlink" title="Conclusion + Additional Resources"></a>Conclusion + Additional Resources</h1><p>That was a short demonstration of transforming a piece of code with Babel! The next articles will be more in-depth and include practical cases of reversing obfuscation techniques you might encounter in the wild.</p>
+<p>For the sake of time, I didn’t go too deep into the behind-the-scenes of Babel or all of its API methods. In the future, I may decide to update this article or write a new one with more detailed explanations, examples, and documentation. But, I really recommend getting a solid fundamental understanding of Babel’s features before continuing on in this series. Most notably, I didn’t cover the usage of the <code>@babel/types</code> package in this article, but it will be utilized in future ones. I’d recommend giving these resources a look:</p>
+<p><a target="_blank" rel="noopener" href="https://babeljs.io/docs/en/">Official Babel Docs</a><br><a target="_blank" rel="noopener" href="https://github.com/jamiebuilds/babel-handbook/blob/master/translations/en/plugin-handbook.md">Babel Plugin Handbook</a><br><a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=UeVq_U5obnE">Video: @babel&#x2F;how-to</a></p>
+<p>Here are links to the other articles in this series:</p>
+<ul>
+<li><p><a href="http://steakenthusiast.github.io/2022/05/22/Deobfuscating-Javascript-via-AST-Manipulation-Various-String-Concealing-Techniques/">Deobfuscating Javascript via AST: Reversing Various String Concealing Techniques</a></p>
+</li>
+<li><p><a href="http://steakenthusiast.github.io/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Converting-Bracket-Notation-Dot-Notation-for-Property-Accessors/">Deobfuscating Javascript via AST: Converting Bracket Notation &#x3D;&gt; Dot Notation for Property Accessors</a></p>
+</li>
+<li><p><a href="http://steakenthusiast.github.io/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/">Deobfuscating Javascript via AST: Constant Folding&#x2F;Binary Expression Simplification</a></p>
+</li>
+<li><p><a href="http://steakenthusiast.github.io/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/">Deobfuscating Javascript via AST: Constant Folding&#x2F;Binary Expression Simplification </a></p>
+</li>
+<li><p><a href="http://steakenthusiast.github.io/2022/05/31/Deobfuscating-Javascript-via-AST-Replacing-References-to-Constant-Variables-with-Their-Actual-Value/">Deobfuscating Javascript via AST: Replacing References to Constant Variables with Their Actual Value</a></p>
+</li>
+<li><p><a href="http://steakenthusiast.github.io/2022/06/04/Deobfuscating-Javascript-via-AST-Removing-Dead-or-Unreachable-Code/">Deobfuscating Javascript via AST: Removing Dead or Unreachable Code</a></p>
+</li>
+</ul>
+<p>You can also view the source code for all my deobfuscation tutorial posts in <a target="_blank" rel="noopener" href="https://github.com/SteakEnthusiast/Supplementary-AST-Based-Deobfuscation-Materials/">this repository</a></p>
+<p>Okay, that’s all I have for you today. I hope that this article helped you learn something new. Thanks for reading, and happy reversing!</p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Deobfuscation/" class="category-chain-item">Deobfuscation</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/Javascript/">#Javascript</a>
+      
+        <a href="/tags/Deobfuscation/">#Deobfuscation</a>
+      
+        <a href="/tags/Babel/">#Babel</a>
+      
+        <a href="/tags/Reverse-Engineering/">#Reverse Engineering</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>An Introduction to Javascript Obfuscation &amp; Babel</div>
+      <div>http://steakenthusiast.github.io/2022/05/21/Deobfuscating-Javascript-via-AST-An-Introduction-to-Babel/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>Author</div>
+          <div>William Khem Marquez</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>Posted on</div>
+          <div>May 21, 2022</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>Licensed under</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - Attribution">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2022/05/22/Deobfuscating-Javascript-via-AST-Manipulation-Various-String-Concealing-Techniques/" title="Deobfuscating Javascript via AST: Reversing Various String Concealing Techniques">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Deobfuscating Javascript via AST: Reversing Various String Concealing Techniques</span>
+                        <span class="visible-mobile">Previous</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>Table of Contents</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">Search</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">Keyword</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.0/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.10/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">Blog works best with JavaScript enabled</div>
+  </noscript>
+</body>
+</html>

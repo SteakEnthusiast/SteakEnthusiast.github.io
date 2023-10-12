@@ -1,0 +1,735 @@
+
+
+<!DOCTYPE html>
+<html lang="en" data-default-color-scheme=dark>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/../images/ico.jpg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="William Khem Marquez">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="PrefaceThis article assumes a preliminary understanding of Abstract Syntax Tree structure and BabelJS. Click Here to read my introductory article on the usage of Babel. Definition of a Constant Variab">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Deobfuscating Javascript via AST: Replacing References to Constant Variables with Their Actual Value">
+<meta property="og:url" content="http://steakenthusiast.github.io/2022/05/31/Deobfuscating-Javascript-via-AST-Replacing-References-to-Constant-Variables-with-Their-Actual-Value/index.html">
+<meta property="og:site_name" content="ReverseJS">
+<meta property="og:description" content="PrefaceThis article assumes a preliminary understanding of Abstract Syntax Tree structure and BabelJS. Click Here to read my introductory article on the usage of Babel. Definition of a Constant Variab">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/05/31/Deobfuscating-Javascript-via-AST-Replacing-References-to-Constant-Variables-with-Their-Actual-Value/replacing1.PNG">
+<meta property="og:image" content="http://steakenthusiast.github.io/2022/05/31/Deobfuscating-Javascript-via-AST-Replacing-References-to-Constant-Variables-with-Their-Actual-Value/replacing2.PNG">
+<meta property="article:published_time" content="2022-05-31T15:10:37.000Z">
+<meta property="article:modified_time" content="2023-10-11T01:24:11.714Z">
+<meta property="article:author" content="William Khem Marquez">
+<meta property="article:tag" content="Javascript">
+<meta property="article:tag" content="Deobfuscation">
+<meta property="article:tag" content="Babel">
+<meta property="article:tag" content="Reverse Engineering">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://steakenthusiast.github.io/2022/05/31/Deobfuscating-Javascript-via-AST-Replacing-References-to-Constant-Variables-with-Their-Actual-Value/replacing1.PNG">
+  
+  
+  
+  <title>Deobfuscating Javascript via AST: Replacing References to Constant Variables with Their Actual Value-ReverseJS</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"steakenthusiast.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":40,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>ReverseJS</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>Home</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>Archives</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>Categories</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>Tags</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                <span>About</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" target="_blank" rel="noopener" href="https://github.com/SteakEnthusiast">
+                <i class="iconfont icon-github-fill"></i>
+                <span></span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" target="_blank" rel="noopener" href="https://www.linkedin.com/in/william-khem-marquez-3232b9222/">
+                <i class="iconfont icon-linkedin-fill"></i>
+                <span></span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/../images/background.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Deobfuscating Javascript via AST: Replacing References to Constant Variables with Their Actual Value"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2022-05-31 11:10" pubdate>
+          May 31, 2022 am
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Deobfuscating Javascript via AST: Replacing References to Constant Variables with Their Actual Value</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h1 id="Preface"><a href="#Preface" class="headerlink" title="Preface"></a>Preface</h1><p>This article assumes a preliminary understanding of Abstract Syntax Tree structure and <a target="_blank" rel="noopener" href="https://babeljs.io/">BabelJS</a>. <a href="http://steakenthusiast.github.io/2022/05/21/Deobfuscating-Javascript-via-AST-An-Introduction-to-Babel/">Click Here</a> to read my introductory article on the usage of Babel.</p>
+<h1 id="Definition-of-a-Constant-Variable"><a href="#Definition-of-a-Constant-Variable" class="headerlink" title="Definition of a Constant Variable"></a>Definition of a Constant Variable</h1><p>For our purposes, a constant variable is any variable that meets <em><strong>all three</strong></em> of the following conditions:</p>
+<ul>
+<li>The variable is declared <strong>AND</strong> initialized at the same time.</li>
+<li>The variable is initialized to a <em>literal value</em>, e.g. <em>StringLiteral</em>, <em>NumericLiteral</em>, <em>BooleanLiteral</em>, etc.</li>
+<li>The variable is never reassigned another value in the script</li>
+</ul>
+<p>Therefore, a variable’s declaration keyword (<code>let</code>,<code>var</code>,<code>const</code>) has no bearing on whether or not it is a constant.</p>
+<p>Here is a quick example:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-keyword">const</span> a = [<span class="hljs-number">1</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>];<br><span class="hljs-keyword">var</span> d = <span class="hljs-number">12</span>;<br><span class="hljs-keyword">let</span> e = <span class="hljs-string">&quot;String!&quot;</span>;<br><span class="hljs-keyword">let</span> f = <span class="hljs-number">13</span>;<br><span class="hljs-keyword">let</span> g;<br><br>f += <span class="hljs-number">2</span>;<br><br><span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(a, b, d, e, f);<br>g = <span class="hljs-number">14</span>;<br></code></pre></td></tr></table></figure>
+
+<p>In this example:</p>
+<ul>
+<li><code>a</code> is not a constant, since it’s initialized as an <em>ArrayExpression</em>, not a <em>Literal</em></li>
+<li><code>d</code> is a constant, as it is declared and initialized to a <em>NumericLiteral</em>. Declaration and initialization happen at the same time. It is also never reassigned.</li>
+<li><code>e</code> is a constant, as it is declared and initialized to a <em>StringLiteral</em>. Declaration and initialization happen at the same time. It is also never reassigned.</li>
+<li><code>f</code> is not a constant, since it is reassigned after initialization: <code>f+=2</code></li>
+<li><code>g</code> is not a constant, since it is not declared and initialized at the same time.</li>
+</ul>
+<p>The reasoning for declared but uninitialized variables not counting as a constant is an important concept to understand. Take the following script as an example:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-keyword">let</span> foo; <span class="hljs-comment">// Initialization</span><br><br><span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(foo); <span class="hljs-comment">// =&gt; undefined</span><br><br>foo = <span class="hljs-number">2</span>;<br><br><span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(foo); <span class="hljs-comment">// =&gt; 2</span><br></code></pre></td></tr></table></figure>
+
+<p>Console Output:</p>
+<figure class="highlight actionscript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs actionscript"><span class="hljs-literal">undefined</span><br><span class="hljs-number">2</span><br></code></pre></td></tr></table></figure>
+
+<p>If, in this case, we tried to substitute <code>foo</code>‘s initialization value (<code>2</code>) for each reference of<code>foo</code>:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-keyword">let</span> foo; <span class="hljs-comment">// Initialization</span><br><br><span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-number">2</span>); <span class="hljs-comment">// =&gt; 2, NOT undefined!</span><br><br>foo = <span class="hljs-number">2</span>;<br><br><span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-number">2</span>); <span class="hljs-comment">// =&gt; 2</span><br></code></pre></td></tr></table></figure>
+
+<p>Console Output:</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs">2<br>2<br></code></pre></td></tr></table></figure>
+
+<p>Which clearly breaks the original functionality of the script due to not accounting for the state of the variable at certain points in the script. Therefore, we must follow the 3 conditions when determining a constant variable.</p>
+<p>I’ll now discuss an example where substituting in constant variables can be useful for deobfuscation purposes.</p>
+<h1 id="Examples"><a href="#Examples" class="headerlink" title="Examples"></a>Examples</h1><p>Let’s say we have a very simple, unobfuscated script that looks like this:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * &quot;Input.js&quot;</span><br><span class="hljs-comment"> * Original, unobfuscated code.</span><br><span class="hljs-comment"> *</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">var</span> url = <span class="hljs-string">&quot;https://api.n0tar3als1t3.dev:1423/getData&quot;</span>;<br><span class="hljs-keyword">const</span> req = <span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) &#123;<br>  <span class="hljs-keyword">let</span> random = <span class="hljs-title class_">Math</span>.<span class="hljs-title function_">random</span>() * <span class="hljs-number">1000</span>;<br>  <span class="hljs-keyword">var</span> xhr = <span class="hljs-keyword">new</span> <span class="hljs-title class_">XMLHttpRequest</span>();<br>  xhr.<span class="hljs-title function_">open</span>(<span class="hljs-string">&quot;GET&quot;</span>, url);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;RandomInt&quot;</span>, random);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Accept&quot;</span>, <span class="hljs-string">&quot;text/html&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Accept-Encoding&quot;</span>, <span class="hljs-string">&quot;gzip, deflate, br&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Accept-Language&quot;</span>, <span class="hljs-string">&quot;en-US,en;q=0.9&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Cache-Control&quot;</span>, <span class="hljs-string">&quot;no-cache&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Connection&quot;</span>, <span class="hljs-string">&quot;keep-alive&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Host&quot;</span>, <span class="hljs-string">&quot;n0tar3als1t3.dev&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Pragma&quot;</span>, <span class="hljs-string">&quot;no-cache&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Referer&quot;</span>, <span class="hljs-string">&quot;https://n0tar3als1t3.dev&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<br>    <span class="hljs-string">`sec-ch-ua&quot;, &quot;&quot; Not A;Brand&quot;;v=&quot;99&quot;, &quot;Chromium&quot;;v=&quot;101&quot;, &quot;Google Chrome&quot;;v=&quot;101&quot;`</span><br>  );<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;sec-ch-ua-mobile&quot;</span>, <span class="hljs-string">&quot;?0&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;sec-ch-ua-platform&quot;</span>, <span class="hljs-string">`&quot;Windows&quot;`</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Sec-Fetch-Dest&quot;</span>, <span class="hljs-string">&quot;empty&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Sec-Fetch-Mode&quot;</span>, <span class="hljs-string">&quot;cors&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Sec-Fetch-Site&quot;</span>, <span class="hljs-string">&quot;same-origin&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<br>    <span class="hljs-string">&quot;User-Agent&quot;</span>,<br>    <span class="hljs-string">&quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.0.0 Safari/537.36&quot;</span><br>  );<br><br>  xhr.<span class="hljs-property">onreadystatechange</span> = <span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) &#123;<br>    <span class="hljs-keyword">if</span> (xhr.<span class="hljs-property">readyState</span> === <span class="hljs-number">4</span>) &#123;<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(xhr.<span class="hljs-property">status</span>);<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(xhr.<span class="hljs-property">responseText</span>);<br>    &#125;<br>  &#125;;<br><br>  xhr.<span class="hljs-title function_">send</span>();<br>&#125;;<br></code></pre></td></tr></table></figure>
+
+<p>We can obfuscate it by replacing all references to the string literals with references to constant variables:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * &quot;constantReferencesObfuscated.js&quot;</span><br><span class="hljs-comment"> * This is the resulting code after obfuscation.</span><br><span class="hljs-comment"> *</span><br><span class="hljs-comment"> */</span><br><br><span class="hljs-keyword">const</span> <span class="hljs-variable constant_">QY</span>$e_yOs = <span class="hljs-string">&quot;https://api.n0tar3als1t3.dev:1423/getData&quot;</span>;<br><span class="hljs-keyword">let</span> apNykoxUn = <span class="hljs-string">&quot;sec-ch-ua-mobile&quot;</span>;<br><span class="hljs-keyword">const</span> zgDT = <span class="hljs-string">&quot;Connection&quot;</span>;<br><span class="hljs-keyword">let</span> A$E =<br>  <span class="hljs-string">&quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.0.0 Safari/537.36&quot;</span>;<br><span class="hljs-keyword">const</span> <span class="hljs-title class_">XVyy</span>$qGVDc = <span class="hljs-string">&quot;Sec-Fetch-Dest&quot;</span>;<br><span class="hljs-keyword">var</span> <span class="hljs-title class_">EkoMLkb</span> = <span class="hljs-string">&quot;Cache-Control&quot;</span>;<br><span class="hljs-keyword">let</span> $jAONLEC = <span class="hljs-string">&quot;Host&quot;</span>;<br><span class="hljs-keyword">var</span> <span class="hljs-title class_">PGOSDhGVlcd</span> = <span class="hljs-string">&quot;https://n0tar3als1t3.dev&quot;</span>;<br><span class="hljs-keyword">const</span> m$ua = <span class="hljs-string">&quot;Accept-Encoding&quot;</span>;<br><span class="hljs-keyword">var</span> <span class="hljs-title class_">Hw</span>$seiMEes = <span class="hljs-string">&quot;Pragma&quot;</span>;<br><span class="hljs-keyword">const</span> <span class="hljs-title class_">ZHCx</span> = <span class="hljs-string">&quot;Sec-Fetch-Site&quot;</span>;<br><span class="hljs-keyword">var</span> <span class="hljs-title class_">PfxQUj</span> = <span class="hljs-string">&quot;Referer&quot;</span>;<br><span class="hljs-keyword">const</span> e_WXHbgheSe = <span class="hljs-string">&quot;Accept&quot;</span>;<br><span class="hljs-keyword">const</span> _VTGows = <span class="hljs-string">&quot;GET&quot;</span>;<br><span class="hljs-keyword">var</span> kphzJIkbgb = <span class="hljs-string">&quot;gzip, deflate, br&quot;</span>;<br><br><span class="hljs-keyword">const</span> req = <span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) &#123;<br>  <span class="hljs-keyword">const</span> <span class="hljs-title class_">SNgfg</span> = <span class="hljs-string">&quot;no-cache&quot;</span>;<br>  <span class="hljs-keyword">let</span> vOqEy = <span class="hljs-string">&quot;text/html&quot;</span>;<br>  <span class="hljs-keyword">const</span> uugBXYcdsHp = <span class="hljs-string">&quot;same-origin&quot;</span>;<br>  <span class="hljs-keyword">const</span> <span class="hljs-variable constant_">AH</span>$HwC = <span class="hljs-string">&quot;Accept-Language&quot;</span>;<br>  <span class="hljs-keyword">var</span> <span class="hljs-title class_">PnAJsD</span> =<br>    <span class="hljs-string">&#x27;sec-ch-ua&quot;, &quot;&quot; Not A;Brand&quot;;v=&quot;99&quot;, &quot;Chromium&quot;;v=&quot;101&quot;, &quot;Google Chrome&quot;;v=&quot;101&quot;&#x27;</span>;<br>  <span class="hljs-keyword">const</span> <span class="hljs-title class_">Svno</span> = <span class="hljs-string">&quot;n0tar3als1t3.dev&quot;</span>;<br>  <span class="hljs-keyword">let</span> <span class="hljs-title class_">OTCqIvdmed</span> = <span class="hljs-string">&#x27;&quot;Windows&quot;&#x27;</span>;<br>  <span class="hljs-keyword">let</span> mVu = <span class="hljs-string">&quot;RandomInt&quot;</span>;<br>  <span class="hljs-keyword">const</span> <span class="hljs-title class_">UgLln</span> = <span class="hljs-string">&quot;empty&quot;</span>;<br>  <span class="hljs-keyword">const</span> <span class="hljs-title class_">HwjBe</span> = <span class="hljs-string">&quot;?0&quot;</span>;<br>  <span class="hljs-keyword">var</span> <span class="hljs-title class_">QnXFnewjh</span> = <span class="hljs-string">&quot;Sec-Fetch-Mode&quot;</span>;<br>  <span class="hljs-keyword">var</span> lGhlU$gqPoK = <span class="hljs-string">&quot;cors&quot;</span>;<br>  <span class="hljs-keyword">const</span> <span class="hljs-title class_">GcictYiOQ</span> = <span class="hljs-string">&quot;User-Agent&quot;</span>;<br>  <span class="hljs-keyword">const</span> <span class="hljs-title class_">AfYNl</span> = <span class="hljs-string">&quot;no-cache&quot;</span>;<br>  <span class="hljs-keyword">var</span> cLAVjnFa = <span class="hljs-string">&quot;keep-alive&quot;</span>;<br>  <span class="hljs-keyword">var</span> V$lt = <span class="hljs-string">&quot;en-US,en;q=0.9&quot;</span>;<br>  <span class="hljs-keyword">const</span> <span class="hljs-title class_">TlMBXe</span> = <span class="hljs-string">&quot;sec-ch-ua-platform&quot;</span>;<br>  <span class="hljs-keyword">let</span> random = <span class="hljs-title class_">Math</span>.<span class="hljs-title function_">random</span>() * <span class="hljs-number">1000</span>;<br>  <span class="hljs-keyword">var</span> xhr = <span class="hljs-keyword">new</span> <span class="hljs-title class_">XMLHttpRequest</span>();<br>  <span class="hljs-keyword">var</span> url = <span class="hljs-variable constant_">QY</span>$e_yOs;<br>  xhr.<span class="hljs-title function_">open</span>(_VTGows, url);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(mVu, random);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(e_WXHbgheSe, vOqEy);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(m$ua, kphzJIkbgb);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-variable constant_">AH</span>$HwC, V$lt);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-title class_">EkoMLkb</span>, <span class="hljs-title class_">SNgfg</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(zgDT, cLAVjnFa);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>($jAONLEC, <span class="hljs-title class_">Svno</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-title class_">Hw</span>$seiMEes, <span class="hljs-title class_">AfYNl</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-title class_">PfxQUj</span>, <span class="hljs-title class_">PGOSDhGVlcd</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-title class_">PnAJsD</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(apNykoxUn, <span class="hljs-title class_">HwjBe</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-title class_">TlMBXe</span>, <span class="hljs-title class_">OTCqIvdmed</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-title class_">XVyy</span>$qGVDc, <span class="hljs-title class_">UgLln</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-title class_">QnXFnewjh</span>, lGhlU$gqPoK);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-title class_">ZHCx</span>, uugBXYcdsHp);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-title class_">GcictYiOQ</span>, A$E);<br><br>  xhr.<span class="hljs-property">onreadystatechange</span> = <span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) &#123;<br>    <span class="hljs-keyword">if</span> (xhr.<span class="hljs-property">readyState</span> === <span class="hljs-number">4</span>) &#123;<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(xhr.<span class="hljs-property">status</span>);<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(xhr.<span class="hljs-property">responseText</span>);<br>    &#125;<br>  &#125;;<br><br>  xhr.<span class="hljs-title function_">send</span>();<br>&#125;;<br></code></pre></td></tr></table></figure>
+
+<h2 id="Analysis-Methodology"><a href="#Analysis-Methodology" class="headerlink" title="Analysis Methodology"></a>Analysis Methodology</h2><p>Obviously, the obfuscated script is much more difficult to read. If you were to manually deobfuscate it, you’d have to search up each referenced variable and replace each occurrence of it with the actual variable. That could get tedious for a large number of variables, so we’re going to do it the Babel way. As always, let’s start by pasting the code into <a target="_blank" rel="noopener" href="https://astexplorer.net/">AST Explorer</a>.</p>
+<p><img src="/2022/05/31/Deobfuscating-Javascript-via-AST-Replacing-References-to-Constant-Variables-with-Their-Actual-Value/replacing1.PNG" srcset="/img/loading.gif" lazyload alt="View of the obfuscated code in AST Explorer"></p>
+<p>Our targets of interest are the extra variable declarations. Let’s take a closer look at one of them:</p>
+<p><img src="/2022/05/31/Deobfuscating-Javascript-via-AST-Replacing-References-to-Constant-Variables-with-Their-Actual-Value/replacing2.PNG" srcset="/img/loading.gif" lazyload alt="A closer look at one of the nodes of interest"></p>
+<p>So, the target node type appears to be of type <em>VariableDeclaration</em>. However, each of these <em>VariableDeclarations</em> contains an array of <em>VariableDeclarators</em>. It is the <em>VariableDeclarator</em> that actually contains the information of the variables, including its <code>id</code> and <code>init</code> values. So, the actual node type we should focus on is <em>VariableDeclarator</em>.</p>
+<p>Recall that we want to identify all <strong><em>constant</em></strong> variables, then replace all their <strong><em>references</em></strong> with their actual value. It’s important to note that variables in different scopes (e.g. local vs. global), may share the same name but have different values. So, the solution isn’t as simple as blindly replacing all matching identifiers with their initial value.</p>
+<p>This would be a convoluted process if not for Babel’s ‘Scope’ API. I won’t dive too deep into the available scope APIs, but you can refer to the <a target="_blank" rel="noopener" href="https://github.com/jamiebuilds/babel-handbook/blob/master/translations/en/plugin-handbook.md#toc-scopes">Babel Plugin Handbook</a> to learn more about them. In our case, the <code>scope.getBinding($&#123;identifierName&#125;)</code> method will be incredibly useful for us, as it directly returns information regarding if a variable is constant and all of its references.</p>
+<p>Putting all this knowledge together, the steps for creating the deobfuscator are as follows:</p>
+<ol>
+<li>Traverse the ast in search of <em>VariableDeclarators</em>. If one is found:<ol>
+<li>Check if the variable is initialized. If it is, check that the initial value is a <em>Literal</em> type. If not, skip the node by returning.</li>
+<li>Use the <code>path.scope.getBinding($&#123;identifierName&#125;)</code> method with the name of the current variable as the argument.</li>
+<li>Store the returned <code>constant</code> and <code>referencedPaths</code> properties in their own respective variables.</li>
+<li>Check if the <code>constant</code> property is <code>true</code>. If it isn’t, skip the node by returning.</li>
+<li>Loop through all NodePaths in the <code>referencedPaths</code> array, and replace them with the current <em>VariableDeclarator</em> ‘s initial value (<code>path.node.init</code>)</li>
+<li>After finishing the loop, remove the original <em>VariableDeclarator</em> node since it has no further use.</li>
+</ol>
+</li>
+</ol>
+<p>The babel implementation is shown below:</p>
+<h1 id="Babel-Deobfuscation-Script"><a href="#Babel-Deobfuscation-Script" class="headerlink" title="Babel Deobfuscation Script"></a>Babel Deobfuscation Script</h1><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br></pre></td><td class="code"><pre><code class="hljs Javascript"><br><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Deobfuscator.js</span><br><span class="hljs-comment"> * The babel script used to deobfuscate the target file</span><br><span class="hljs-comment"> *</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">const</span> parser = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/parser&quot;</span>);<br><span class="hljs-keyword">const</span> traverse = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/traverse&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> t = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/types&quot;</span>);<br><span class="hljs-keyword">const</span> generate = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;@babel/generator&quot;</span>).<span class="hljs-property">default</span>;<br><span class="hljs-keyword">const</span> beautify = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;js-beautify&quot;</span>);<br><span class="hljs-keyword">const</span> &#123; readFileSync, writeFile &#125; = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;fs&quot;</span>);<br><br><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Main function to deobfuscate the code.</span><br><span class="hljs-comment"> * <span class="hljs-doctag">@param</span> source The source code of the file to be deobfuscated</span><br><span class="hljs-comment"> *</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">function</span> <span class="hljs-title function_">deobfuscate</span>(<span class="hljs-params">source</span>) &#123;<br>  <span class="hljs-comment">//Parse AST of Source Code</span><br>  <span class="hljs-keyword">const</span> ast = parser.<span class="hljs-title function_">parse</span>(source);<br><br>  <span class="hljs-comment">// Visitor for replacing constants</span><br><br>  <span class="hljs-keyword">const</span> replaceRefsToConstants = &#123;<br>    <span class="hljs-title class_">VariableDeclarator</span>(path) &#123;<br>      <span class="hljs-keyword">const</span> &#123; id, init &#125; = path.<span class="hljs-property">node</span>;<br>      <span class="hljs-comment">// Ensure the the variable is initialized to a Literal type.</span><br>      <span class="hljs-keyword">if</span> (!t.<span class="hljs-title function_">isLiteral</span>(init)) <span class="hljs-keyword">return</span>;<br>      <span class="hljs-keyword">let</span> &#123;constant, referencePaths&#125; = path.<span class="hljs-property">scope</span>.<span class="hljs-title function_">getBinding</span>(id.<span class="hljs-property">name</span>);<br>      <span class="hljs-comment">// Make sure it&#x27;s constant</span><br>      <span class="hljs-keyword">if</span> (!constant) <span class="hljs-keyword">return</span>;<br>      <span class="hljs-comment">// Loop through all references and replace them with the actual value.</span><br>      <span class="hljs-keyword">for</span> (<span class="hljs-keyword">let</span> referencedPath <span class="hljs-keyword">of</span> referencePaths) &#123;<br>        referencedPath.<span class="hljs-title function_">replaceWith</span>(init);<br>      &#125;<br>      <span class="hljs-comment">// Delete the now useless VariableDeclarator</span><br>      path.<span class="hljs-title function_">remove</span>();<br>    &#125;,<br>  &#125;;<br><br>  <span class="hljs-comment">// Execute the visitor</span><br>  <span class="hljs-title function_">traverse</span>(ast, replaceRefsToConstants);<br><br>  <span class="hljs-comment">// Code Beautification</span><br>  <span class="hljs-keyword">let</span> deobfCode = <span class="hljs-title function_">generate</span>(ast, &#123; <span class="hljs-attr">comments</span>: <span class="hljs-literal">false</span> &#125;).<span class="hljs-property">code</span>;<br>  deobfCode = <span class="hljs-title function_">beautify</span>(deobfCode, &#123;<br>    <span class="hljs-attr">indent_size</span>: <span class="hljs-number">2</span>,<br>    <span class="hljs-attr">space_in_empty_paren</span>: <span class="hljs-literal">true</span>,<br>  &#125;);<br>  <span class="hljs-comment">// Output the deobfuscated result</span><br>  <span class="hljs-title function_">writeCodeToFile</span>(deobfCode);<br>&#125;<br><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * Writes the deobfuscated code to output.js</span><br><span class="hljs-comment"> * <span class="hljs-doctag">@param</span> code The deobfuscated code</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">function</span> <span class="hljs-title function_">writeCodeToFile</span>(<span class="hljs-params">code</span>) &#123;<br>  <span class="hljs-keyword">let</span> outputPath = <span class="hljs-string">&quot;output.js&quot;</span>;<br>  <span class="hljs-title function_">writeFile</span>(outputPath, code, <span class="hljs-function">(<span class="hljs-params">err</span>) =&gt;</span> &#123;<br>    <span class="hljs-keyword">if</span> (err) &#123;<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">&quot;Error writing file&quot;</span>, err);<br>    &#125; <span class="hljs-keyword">else</span> &#123;<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Wrote file to <span class="hljs-subst">$&#123;outputPath&#125;</span>`</span>);<br>    &#125;<br>  &#125;);<br>&#125;<br><br><span class="hljs-title function_">deobfuscate</span>(<span class="hljs-title function_">readFileSync</span>(<span class="hljs-string">&quot;./constantReferencesObfuscated.js&quot;</span>, <span class="hljs-string">&quot;utf8&quot;</span>));<br><br></code></pre></td></tr></table></figure>
+
+<p>After processing the obfuscated script with the babel plugin above, we get the following result:</p>
+<h1 id="Post-Deobfuscation-Result"><a href="#Post-Deobfuscation-Result" class="headerlink" title="Post-Deobfuscation Result"></a>Post-Deobfuscation Result</h1><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><code class="hljs javascript"><span class="hljs-keyword">const</span> req = <span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) &#123;<br>  <span class="hljs-keyword">let</span> random = <span class="hljs-title class_">Math</span>.<span class="hljs-title function_">random</span>() * <span class="hljs-number">1000</span>;<br>  <span class="hljs-keyword">var</span> xhr = <span class="hljs-keyword">new</span> <span class="hljs-title class_">XMLHttpRequest</span>();<br>  xhr.<span class="hljs-title function_">open</span>(<span class="hljs-string">&quot;GET&quot;</span>, <span class="hljs-string">&quot;https://api.n0tar3als1t3.dev:1423/getData&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;RandomInt&quot;</span>, random);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Accept&quot;</span>, <span class="hljs-string">&quot;text/html&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Accept-Encoding&quot;</span>, <span class="hljs-string">&quot;gzip, deflate, br&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Accept-Language&quot;</span>, <span class="hljs-string">&quot;en-US,en;q=0.9&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Cache-Control&quot;</span>, <span class="hljs-string">&quot;no-cache&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Connection&quot;</span>, <span class="hljs-string">&quot;keep-alive&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Host&quot;</span>, <span class="hljs-string">&quot;n0tar3als1t3.dev&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Pragma&quot;</span>, <span class="hljs-string">&quot;no-cache&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Referer&quot;</span>, <span class="hljs-string">&quot;https://n0tar3als1t3.dev&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<br>    <span class="hljs-string">&#x27;sec-ch-ua&quot;, &quot;&quot; Not A;Brand&quot;;v=&quot;99&quot;, &quot;Chromium&quot;;v=&quot;101&quot;, &quot;Google Chrome&quot;;v=&quot;101&quot;&#x27;</span><br>  );<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;sec-ch-ua-mobile&quot;</span>, <span class="hljs-string">&quot;?0&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;sec-ch-ua-platform&quot;</span>, <span class="hljs-string">&#x27;&quot;Windows&quot;&#x27;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Sec-Fetch-Dest&quot;</span>, <span class="hljs-string">&quot;empty&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Sec-Fetch-Mode&quot;</span>, <span class="hljs-string">&quot;cors&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<span class="hljs-string">&quot;Sec-Fetch-Site&quot;</span>, <span class="hljs-string">&quot;same-origin&quot;</span>);<br>  xhr.<span class="hljs-title function_">setRequestHeader</span>(<br>    <span class="hljs-string">&quot;User-Agent&quot;</span>,<br>    <span class="hljs-string">&quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.0.0 Safari/537.36&quot;</span><br>  );<br><br>  xhr.<span class="hljs-property">onreadystatechange</span> = <span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) &#123;<br>    <span class="hljs-keyword">if</span> (xhr.<span class="hljs-property">readyState</span> === <span class="hljs-number">4</span>) &#123;<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(xhr.<span class="hljs-property">status</span>);<br>      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(xhr.<span class="hljs-property">responseText</span>);<br>    &#125;<br>  &#125;;<br><br>  xhr.<span class="hljs-title function_">send</span>();<br>&#125;;<br></code></pre></td></tr></table></figure>
+
+<p>And the code is restored. Even better than the original actually, since we substituted in the <code>url</code> variable too!</p>
+<h1 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h1><p>Substitution of constant variables is a must-know deobfuscation technique. It’ll usually be one of your first steps in the deobfuscation, combined with <em>constant folding</em>. If you would like to learn about constant folding, you can read my article about it <a href="http://steakenthusiast.github.io/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/">here</a>.</p>
+<p>This article also gave a nice introduction to one of the useful Babel API methods. Unfortunately, there isn’t much good documentation out there aside from the <a target="_blank" rel="noopener" href="https://github.com/jamiebuilds/babel-handbook/blob/master/translations/en/plugin-handbook.md">Babel Plugin Handbook</a>. However, you can discover a lot more useful features Babel has to offer by reading its source code, or using the debugger of an IDE to list and test helper methods (the latter of which I personally prefer 😄).</p>
+<p>If you’re interested, you can find the source code for all the examples in <a target="_blank" rel="noopener" href="https://github.com/SteakEnthusiast/Supplementary-AST-Based-Deobfuscation-Materials">this repository</a>.</p>
+<p>Okay, that’s all I have for you today. I hope that this article helped you learn something new. Thanks for reading, and happy reversing!</p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Deobfuscation/" class="category-chain-item">Deobfuscation</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/Javascript/">#Javascript</a>
+      
+        <a href="/tags/Deobfuscation/">#Deobfuscation</a>
+      
+        <a href="/tags/Babel/">#Babel</a>
+      
+        <a href="/tags/Reverse-Engineering/">#Reverse Engineering</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Deobfuscating Javascript via AST: Replacing References to Constant Variables with Their Actual Value</div>
+      <div>http://steakenthusiast.github.io/2022/05/31/Deobfuscating-Javascript-via-AST-Replacing-References-to-Constant-Variables-with-Their-Actual-Value/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>Author</div>
+          <div>William Khem Marquez</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>Posted on</div>
+          <div>May 31, 2022</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>Licensed under</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - Attribution">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2022/06/04/Deobfuscating-Javascript-via-AST-Removing-Dead-or-Unreachable-Code/" title="Deobfuscating Javascript via AST: Removing Dead or Unreachable Code">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Deobfuscating Javascript via AST: Removing Dead or Unreachable Code</span>
+                        <span class="visible-mobile">Previous</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2022/05/28/Deobfuscating-Javascript-via-AST-Manipulation-Constant-Folding/" title="Deobfuscating Javascript via AST: Constant Folding/Binary Expression Simplification">
+                        <span class="hidden-mobile">Deobfuscating Javascript via AST: Constant Folding/Binary Expression Simplification</span>
+                        <span class="visible-mobile">Next</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>Table of Contents</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">Search</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">Keyword</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.0/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.10/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">Blog works best with JavaScript enabled</div>
+  </noscript>
+</body>
+</html>
